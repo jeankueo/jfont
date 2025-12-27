@@ -1,0 +1,220 @@
+#!/bin/bash
+# Example of Usage:
+    # font char_2_uni
+    # font png_crop
+    # font png_2_pbm
+    # font pbm_2_svg
+    # font svg_import
+    # font generate
+    # font -name <sfd file name> pipeline
+
+VERSION="1.0.0"
+
+ORIGIN_DIR=./src
+JSON_DIR=./output/json
+PNG_DIR=./output/png
+PBM_DIR=./output/pbm
+SVG_DIR=./output/svg
+
+TTF_FILE="" # Will be set based on SFD_FILE
+
+# Function to set default font names if not provided
+set_default_names_if_needed() {
+    if [ -z "$SFD_FILE" ]; then
+        echo "No -name provided, using default name from png file in $ORIGIN_DIR"
+        local input_file=$(find "$ORIGIN_DIR" -type f -name "*.png" | head -n 1)
+        if [ -z "$input_file" ]; then
+            echo "Error: No png file found in $ORIGIN_DIR to determine default name."
+            exit 1
+        fi
+        local filename=$(basename -- "$input_file")
+        local filename_no_ext="${filename%.*}"
+        
+        SFD_FILE="./${filename_no_ext}.sfd"
+        TTF_FILE="./output/${filename_no_ext}.ttf"
+        echo "Using default name: $filename_no_ext"
+    fi
+}
+
+# Parse command-line options
+while [[ "$1" =~ ^- ]]; do
+  case "$1" in
+    -name)
+      SFD_FILE="./$2.sfd"
+      TTF_FILE="./output/$2.ttf"
+      shift 2
+      ;;
+    --version|-v)
+      echo "$VERSION"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      exit 1
+      ;;
+  esac
+done
+
+char_2_uni() {
+    mkdir -p "$JSON_DIR"
+    for txt_file in "$ORIGIN_DIR"/*.txt; do
+        if [ -f "$txt_file" ]; then
+            echo "Processing $txt_file..."
+            input_string=$(cat "$txt_file")
+            json_array=$(echo -n "$input_string" | perl -CS -MJSON -ne 'print encode_json([map { sprintf("uni%04x", ord) } split //])')
+            
+            filename=$(basename -- "$txt_file")
+            filename_no_ext="${filename%.*}"
+            json_file="$JSON_DIR/$filename_no_ext.json"
+            echo "$json_array" > "$json_file"
+            echo "Unicode values saved to $json_file"
+        fi
+    done
+}
+
+png_crop() {
+    input_file=$(find "$ORIGIN_DIR" -type f -name "*.png" | head -n 1)
+    if [ -z "$input_file" ]; then
+        echo "No png file found in $ORIGIN_DIR"
+        exit 1
+    fi
+
+    filename=$(basename -- "$input_file")
+    filename_no_ext="${filename%.*}"
+    json_file="$JSON_DIR/$filename_no_ext.json"
+
+    if [ ! -f "$json_file" ]; then
+        echo "JSON file not found: $json_file"
+        exit 1
+    fi
+
+    names=()
+    while IFS= read -r line; do
+        names+=("$line")
+    done < <(jq -r '.[]' "$json_file")
+
+    echo "Cropping $input_file..."
+    rm -rf "$PNG_DIR"
+    mkdir -p "$PNG_DIR"
+    magick "$input_file" -crop 200x200 +repage +adjoin "$PNG_DIR/%02d.png"
+    echo "Cropped images are saved in $PNG_DIR"
+
+    echo "Renaming cropped images..."
+    i=0
+    for file in $(find "$PNG_DIR" -name "*.png" | sort); do
+        if [ -n "${names[$i]}" ]; then
+            new_name="${names[$i]}.png"
+            mv "$file" "$PNG_DIR/$new_name"
+            echo "Renamed $file to $new_name"
+        else
+            echo "Warning: No name found for $file at index $i. Deleting file."
+            rm "$file"
+        fi
+        i=$((i+1))
+    done
+}
+
+png_2_pbm() {
+    mkdir -p "$PBM_DIR"
+    for file in "$PNG_DIR"/*.png; do
+        echo "Converting $file to PBM..."
+        _png_to_pbm "$file" "$PBM_DIR"
+    done
+}
+
+pbm_2_svg() {
+    mkdir -p "$SVG_DIR"
+    for file in "$PBM_DIR"/*.pbm; do
+        echo "Converting $file to SVG..."
+        _pbm_to_svg "$file" "$SVG_DIR"
+    done
+}
+
+_png_to_pbm(){
+    local filename=$(basename -- "$1")
+    local filename_no_ext="${filename%.*}"
+    magick "$1" -background white -alpha remove -colorspace Gray "$2/$filename_no_ext.pbm"
+}
+
+_pbm_to_svg(){
+    local filename=$(basename -- "$1")
+    local filename_no_ext="${filename%.*}"
+    potrace "$1" -s -o "$2/$filename_no_ext.svg"
+}
+
+svg_import() {
+    SCRIPT_FILE=$(mktemp)
+    
+    if [ ! -f "$SFD_FILE" ]; then
+        echo "SFD file not found: $SFD_FILE. Creating a new one."
+        echo "New()" > "$SCRIPT_FILE"
+        echo 'Reencode("UnicodeFull")' >> "$SCRIPT_FILE"
+    else
+        echo "Open(\"$SFD_FILE\")" > "$SCRIPT_FILE"
+    fi
+
+    for file in "$SVG_DIR"/*.svg; do
+        local filename=$(basename -- "$file")
+        local filename_no_ext="${filename%.*}"
+        # filename is like uniXXXX
+        local unicode_hex=${filename_no_ext:3}
+        echo "Select(0x$unicode_hex); Clear(); Import(\"$file\"); Scale(160);" >> "$SCRIPT_FILE"
+        echo "Processing $file for U+$unicode_hex"
+    done
+
+    echo "Save(\"$SFD_FILE\")" >> "$SCRIPT_FILE"
+    echo "Close()" >> "$SCRIPT_FILE"
+
+    echo "Running fontforge script to generate SFD..."
+    fontforge -script "$SCRIPT_FILE"
+    
+    rm "$SCRIPT_FILE"
+    echo "Fontforge script finished. SFD file saved at $SFD_FILE"
+}
+
+font_generate() {
+    if [ ! -f "$SFD_FILE" ]; then
+        echo "SFD file not found: $SFD_FILE"
+        exit 1
+    fi
+
+    echo "Generating TTF font..."
+    fontforge -script -c "import fontforge; font = fontforge.open('$SFD_FILE'); font.generate('$TTF_FILE'); font.close()"
+    echo "TTF font generated at $TTF_FILE"
+}
+
+case "$1" in
+    "png_2_pbm")
+        png_2_pbm
+        ;;
+    "png_crop")
+        png_crop
+        ;;
+    "pbm_2_svg")
+        pbm_2_svg
+        ;;
+    "char_2_uni")
+        char_2_uni
+        ;;
+    "svg_import")
+        set_default_names_if_needed
+        svg_import
+        ;;
+    "generate")
+        set_default_names_if_needed
+        font_generate
+        ;;
+    pipeline)
+        set_default_names_if_needed
+        char_2_uni
+        png_crop
+        png_2_pbm
+        pbm_2_svg
+        svg_import
+        font_generate
+        ;;
+    *)
+        echo "Usage: font [--version|-v] [-name <filename>] [char_2_uni|png_crop|png_2_pbm|pbm_2_svg|svg_import|generate]|pipeline"
+        exit 1
+        ;;
+esac

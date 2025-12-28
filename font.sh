@@ -158,7 +158,7 @@ svg_import() {
         local filename_no_ext="${filename%.*}"
         # filename is like uniXXXX
         local unicode_hex=${filename_no_ext:3}
-        echo "Select(0x$unicode_hex); Clear(); Import(\"$file\"); Scale(160); Translate(200, 0);" >> "$SCRIPT_FILE"
+        echo "Select(0x$unicode_hex); Clear(); Import(\"$file\"); Scale(160);" >> "$SCRIPT_FILE"
         echo "Processing $file for U+$unicode_hex"
     done
 

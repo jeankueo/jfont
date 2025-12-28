@@ -45,6 +45,7 @@ alias font=<path_to>/font.sh
 font --version
 ```
 # How to use 
+## Step Description
 - create .png file
     - create a canvas size 1400x2200 in procreate
     - import template.png as a layer
@@ -60,8 +61,13 @@ font --version
         - /png folder contains at most 77 pngs cropped from origin x.png file and all renamed to unicode correspondingly
         - /pbm folder contains at most 77 pbm files grayed from png
         - /svg folder contains at most 77 svg files ready to be imported to font file
-    - at root folder x.sdt file is created which is the project file of fontforge
+    - at root folder x.sfd file is created which is the project file of fontforge
     - in ./output folder x.ttf is created which is a font file ready to be used
 - for repeating run
     - clear /src, replace with new .txt and .png
     - se command "font -name x pipeline", so font edit file will be change accumulately
+
+## Special Comment
+- The template is originally chinese orianted. I will add some assistant line for letters and symbols
+- According to my daughter' writing habits, my script will automatically do 1.6 scale and 200 pixel right move when importing SVGs into .sfd file
+- I usually do not use the generated .ttf directly, because i always do some finetuning in fontforge GUI after importing, and will generate .ttf file from the GUI tool.

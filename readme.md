@@ -65,6 +65,7 @@ font --version
     - in ./output folder x.ttf is created which is a font file ready to be used
 - for repeating run
     - clear /src, replace with new .txt and .png
+    - delete /output
     - se command "font -name x pipeline", so font edit file will be change accumulately
 
 ## Special Comment

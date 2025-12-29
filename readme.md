@@ -70,6 +70,5 @@ font --version
 
 ## Special Comment
 - The template is originally chinese orianted. I will add some assistant line for letters and symbols
-- According to my daughter' writing habits, my script will automatically do 1.6 scale when importing SVGs into .sfd file
 - I usually do not use the generated .ttf directly, because i always do some finetuning in fontforge GUI after importing, and will generate .ttf file from the GUI tool.
-- the procreate template is called "米回字格"，which is perfect for chinese character writing. Also fit for letters and symbols.
+- the procreate template is called "米回字格"，which is perfect for chinese character writing. Also fit for letters and symbols. If the inner square if  filled by font, my script will automatically do 1.5 scale and move right 250px when importing SVGs into .sfd file

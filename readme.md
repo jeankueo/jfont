@@ -75,9 +75,9 @@ font --version
 - By my experience using the template, if the font is created almost exact size of the inner square, generating of .SFD file will scale the font by 1.5 times and move right by 250 pixel. The left and right bearing are set to 50px. Then the size is perfect for using.
 
 ## Sample
-- Step 1 create a .png in procreate. Note how lowercase/uppercase letters and Chinese characters are placed:
+- Step 1 create a procreate project sizing 2200x1400 in procreate. Import ./template/template.png. Add another layer on top to create your font. Note how lowercase/uppercase letters and Chinese characters are placed:
 ![png in procreate](./doc/sample.procreate.png ".png in procreate")
-- Step 2 place .png under /src folder.create a .txt file containing the same fonts under the same folder.
+- Step 2 export .png without template and background. Place .png under /src folder.create a .txt file containing the same fonts under the same folder.
 - Step 3 run "font -name sample pipeline". As a result we get a sample.ttf file under ./output folder
 ![sample in ide](./doc/sample.ide.png "how to generate font")
 - Step 4 install font file by drag-and-drop to font book

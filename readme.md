@@ -80,7 +80,5 @@ font --version
 - Step 2 place .png under /src folder.create a .txt file containing the same fonts under the same folder.
 - Step 3 run "font -name sample pipeline". As a result we get a sample.ttf file under ./output folder
 ![sample in ide](./doc/sample.ide.png "how to generate font")
-- Step 4 install font file by drag-and-drop to font book
-![font install](./doc/font.install.png "how to install font")
 - Step 5 test by typing.
 ![sample result](./doc/sample.result.png "how to test font")

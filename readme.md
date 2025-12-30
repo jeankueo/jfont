@@ -52,23 +52,24 @@ font --version
     - add a layer and write your font into each 200x200 boxes
     - hide template layer
     - export a png without background and put under /src folder with chosen file name x
+    - place .png files under ./src folder
 - create .txt file
-    - type in all characters in .png file in sequence to .txt file
-    - use a same name .x and place under /src folder
+    - type in all characters in .png files in sequence to .txt files
+    - use a same name .as png files and place under /src folder
 - for the first time run command "font pipeline"
     - ./output folder is created, under which
-        -   /json folder contains a json file with all unicodes from .txt file
-        - /png folder contains at most 77 pngs cropped from origin x.png file and all renamed to unicode correspondingly
-        - /pbm folder contains at most 77 pbm files grayed from png
-        - /svg folder contains at most 77 svg files ready to be imported to font file
-    - at root folder x.sfd file is created which is the project file of fontforge
-    - in ./output folder x.ttf is created which is a font file ready to be used
+        -   /json folder contains json files with all unicodes from .txt file
+        - /png folder contains at most n*77 pngs cropped from origin png file and all renamed to unicode correspondingly
+        - /pbm folder contains at most n*77 pbm files grayed from png
+        - /svg folder contains at most n*77 svg files ready to be imported to font file
+    - at root folder .sfd file is created which is the name specified by -name parameter
+    - in ./output folder .ttf is created with the same name which is a font file ready to be used
 - for repeating run
-    - clear /src, replace with new .txt and .png
+    - clear /src, replace with new .txt files and .png files
     - delete /output
-    - se command "font -name x pipeline", so font edit file will be change accumulately
+    - se command "font -name <existing name> pipeline", so font edit file will be change accumulately
+    - or you can choose not clear /src folder and generate .ttf with all existing source
 
 ## Special Comment
-- The template is originally chinese orianted. I will add some assistant line for letters and symbols
-- I usually do not use the generated .ttf directly, because i always do some finetuning in fontforge GUI after importing, and will generate .ttf file from the GUI tool.
-- the procreate template is called "米回字格"，which is perfect for chinese character writing. Also fit for letters and symbols. If the inner square if  filled by font, my script will automatically do 1.5 scale and move right 250px when importing SVGs into .sfd file
+- The template is originally chinese orianted which is "米字格". I add later an assistant square for letters and symbols, now it is called "回米字格".
+- By my experience using the template, if the font is created almost exact size of the inner square, generating of .SFD file will scale the font by 1.5 times and move right by 250 pixel. The left and right bearing are set to 50px. Then the size is perfect for using.

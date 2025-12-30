@@ -18,21 +18,11 @@ SVG_DIR=./output/svg
 
 TTF_FILE="" # Will be set based on SFD_FILE
 
-# Function to set default font names if not provided
-set_default_names_if_needed() {
+# Function to check if font name is provided
+check_font_name() {
     if [ -z "$SFD_FILE" ]; then
-        echo "No -name provided, using default name from png file in $ORIGIN_DIR"
-        local input_file=$(find "$ORIGIN_DIR" -type f -name "*.png" | head -n 1)
-        if [ -z "$input_file" ]; then
-            echo "Error: No png file found in $ORIGIN_DIR to determine default name."
-            exit 1
-        fi
-        local filename=$(basename -- "$input_file")
-        local filename_no_ext="${filename%.*}"
-        
-        SFD_FILE="./${filename_no_ext}.sfd"
-        TTF_FILE="./output/${filename_no_ext}.ttf"
-        echo "Using default name: $filename_no_ext"
+        echo "Error: -name <font_name> is required for this command."
+        exit 1
     fi
 }
 
@@ -73,45 +63,51 @@ char_2_uni() {
 }
 
 png_crop() {
-    input_file=$(find "$ORIGIN_DIR" -type f -name "*.png" | head -n 1)
-    if [ -z "$input_file" ]; then
-        echo "No png file found in $ORIGIN_DIR"
-        exit 1
-    fi
-
-    filename=$(basename -- "$input_file")
-    filename_no_ext="${filename%.*}"
-    json_file="$JSON_DIR/$filename_no_ext.json"
-
-    if [ ! -f "$json_file" ]; then
-        echo "JSON file not found: $json_file"
-        exit 1
-    fi
-
-    names=()
-    while IFS= read -r line; do
-        names+=("$line")
-    done < <(jq -r '.[]' "$json_file")
-
-    echo "Cropping $input_file..."
     rm -rf "$PNG_DIR"
     mkdir -p "$PNG_DIR"
-    magick "$input_file" -crop 200x200 +repage +adjoin "$PNG_DIR/%02d.png"
-    echo "Cropped images are saved in $PNG_DIR"
 
-    echo "Renaming cropped images..."
-    i=0
-    for file in $(find "$PNG_DIR" -name "*.png" | sort); do
-        if [ -n "${names[$i]}" ]; then
-            new_name="${names[$i]}.png"
-            mv "$file" "$PNG_DIR/$new_name"
-            echo "Renamed $file to $new_name"
-        else
-            echo "Warning: No name found for $file at index $i. Deleting file."
-            rm "$file"
+    for input_file in "$ORIGIN_DIR"/*.png; do
+        if [ ! -f "$input_file" ]; then
+            continue
         fi
-        i=$((i+1))
+
+        echo "Processing $input_file..."
+
+        local filename=$(basename -- "$input_file")
+        local filename_no_ext="${filename%.*}"
+        local json_file="$JSON_DIR/$filename_no_ext.json"
+
+        if [ ! -f "$json_file" ]; then
+            echo "Warning: JSON file not found for $input_file. Skipping."
+            continue
+        fi
+
+        local names=()
+        while IFS= read -r line; do
+            names+=("$line")
+        done < <(jq -r '.[]' "$json_file")
+
+        local temp_crop_dir=$(mktemp -d)
+        echo "Cropping $input_file into temporary directory $temp_crop_dir..."
+        magick "$input_file" -crop 200x200 +repage +adjoin "$temp_crop_dir/%02d.png"
+
+        echo "Renaming and moving cropped images..."
+        local i=0
+        for file in $(find "$temp_crop_dir" -name "*.png" | sort); do
+            if [ -n "${names[$i]}" ]; then
+                local new_name="${names[$i]}.png"
+                mv "$file" "$PNG_DIR/$new_name"
+                echo "Created $PNG_DIR/$new_name"
+            else
+                echo "Warning: No name found for $file at index $i. Deleting file."
+                rm "$file"
+            fi
+            i=$((i+1))
+        done
+        rm -r "$temp_crop_dir"
     done
+
+    echo "Cropping and renaming complete. All files are in $PNG_DIR"
 }
 
 png_2_pbm() {
@@ -147,8 +143,34 @@ svg_import() {
     
     if [ ! -f "$SFD_FILE" ]; then
         echo "SFD file not found: $SFD_FILE. Creating a new one."
-        echo "New()" > "$SCRIPT_FILE"
-        echo 'Reencode("UnicodeFull")' >> "$SCRIPT_FILE"
+        local sfd_basename=$(basename -- "$SFD_FILE")
+        local font_name="${sfd_basename%.*}"
+        # PostScript name cannot contain spaces.
+        local postscript_name=$(echo "$font_name" | tr -d ' ')
+
+        {
+            echo "New()"
+            echo 'Reencode("UnicodeFull")'
+            # Set core font names: PostScript, Family Name, and Full Name (Name for Humans)
+            echo "SetFontNames(\"$postscript_name\", \"$font_name\", \"$font_name\")"
+
+            # Set TTF naming table for English (0x409) for maximum compatibility
+            echo "SetTTFName(0x409, 1, \"$font_name\")"      # 1: Font Family Name
+            echo "SetTTFName(0x409, 2, \"Regular\")"         # 2: Font Subfamily Name
+            echo "SetTTFName(0x409, 4, \"$font_name\")"      # 4: Full Font Name
+            echo "SetTTFName(0x409, 5, \"$VERSION\")"        # 5: Version
+            echo "SetTTFName(0x409, 6, \"$postscript_name\")" # 6: PostScript Name
+            echo "SetTTFName(0x409, 7, \"Private\")"         # 7: Trademark
+
+            # Set TTF naming table for Chinese, PRC (0x804)
+            echo "SetTTFName(0x804, 1, \"$font_name\")"
+            echo "SetTTFName(0x804, 2, \"常规\")"
+            echo "SetTTFName(0x804, 4, \"$font_name\")"
+            echo "SetTTFName(0x804, 5, \"$VERSION\")"
+            echo "SetTTFName(0x804, 6, \"$postscript_name\")"
+            echo "SetTTFName(0x804, 7, \"Private\")"
+
+        } > "$SCRIPT_FILE"
     else
         echo "Open(\"$SFD_FILE\")" > "$SCRIPT_FILE"
     fi
@@ -197,15 +219,15 @@ case "$1" in
         char_2_uni
         ;;
     "svg_import")
-        set_default_names_if_needed
+        check_font_name
         svg_import
         ;;
     "generate")
-        set_default_names_if_needed
+        check_font_name
         font_generate
         ;;
     pipeline)
-        set_default_names_if_needed
+        check_font_name
         char_2_uni
         png_crop
         png_2_pbm

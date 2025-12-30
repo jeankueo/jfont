@@ -73,6 +73,7 @@ font --version
 ## Special Comment
 - The template is originally chinese orianted which is "米字格". I add later an assistant square for letters and symbols, now it is called "回米字格".
 - By my experience using the template, if the font is created almost exact size of the inner square, generating of .SFD file will scale the font by 1.5 times and move right by 250 pixel. The left and right bearing are set to 50px. Then the size is perfect for using.
+- Multiple source .png and .txt is supported.
 
 ## Sample
 - Step 1 create a Procreate project sizing 2200x1400 on iPad. Import ./template/template.png. Add another layer on top to create your font. Note how lowercase/uppercase letters and Chinese characters are placed:

@@ -81,6 +81,7 @@ alias font=<path_to>/font.sh
 font --version
 ```
 # How to use 
+todo
 
 ## Special Comment
 - The template is originally chinese orianted which is "米字格". I add later an assistant square for letters and symbols, now it is called "回米字格".

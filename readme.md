@@ -1,5 +1,41 @@
 # Purpose
-This project provides a shell script that can generate font file .ttf from source png. The script is created in MACOS, MS users need to adapt all commands to fit windows shell.
+This project aim provide fast assignment creation from source text to hand out for learners. After learners do their exercise on ipad (procreate recommended), they can hand in assignments, then font can be created out of their handins, hence a good pirnt out can be created.
+
+Functions are provided via shell script.
+
+# Usage
+USAGE
+  font [-v] <command> [subcommand] [options]
+
+WORKFLOW
+  1. assignment  Generate practice sheets → students write characters
+  2. typeface    Scan handwritten PNGs → build TTF font
+
+font assignment [subcommand] [options]
+  (no subcommand)       Pipeline: [reset?] → content → png
+    -text <file/folder>     .txt source; default: ASSIGN_FONT_TEXT_DIR_DEFAULT="./text"
+    -handout <folder>       Output folder; default: ASSIGN_FONT_HANDOUT_DIR_DEFAULT="./handout"
+  content [options]     Append lessons to content.json (creates if absent)
+    -text <file/folder>     File: that lesson · Folder: all, alphabetical
+    -handout <folder>       Override output folder
+  png [options]         Generate practice-sheet PNGs into handout folder
+    -text <file/folder>     Filter lessons; omit to generate all
+    -handout <folder>       Override output folder
+  reset [options]       -handout <folder>: clear folder · -handout <file>: delete its PNGs
+                        No -handout: clear the default handout folder
+
+font typeface [subcommand] [options]
+  (no subcommand)       Full pipeline: char-2-uni → png-crop → png-2-pbm → pbm-2-svg → svg-import → generate → cleanup
+    -handin <file/folder>   Source PNGs; default: TYPEFACE_HANDIN_DIR_DEFAULT="./handin"
+    -font-name <name>       Base name for .sfd and .ttf; default: TYPEFACE_FONT_NAME_DEFAULT="myfont"
+    -font-dir <folder>      Output for .sfd/.ttf and temp/; default: TYPEFACE_FONT_DIR_DEFAULT="./font"
+  char-2-uni [options]  .png filename → Unicode JSON
+  png-crop [options]    Crop handin PNGs → per-glyph 200×200 PNGs
+  png-2-pbm             PNG → PBM bitmaps
+  pbm-2-svg             PBM → SVG outlines
+  svg-import [options]  SVG → FontForge .sfd
+  generate [options]    .sfd → .ttf
+  cleanup               Delete font-dir/temp/
 
 # Prerequisite
 - **perl**, **jq** (usually preinstalled in mac already)
@@ -45,43 +81,8 @@ alias font=<path_to>/font.sh
 font --version
 ```
 # How to use 
-## Step Description
-- create .png file
-    - create a canvas size 1400x2200 in procreate
-    - import template.png as a layer
-    - add a layer and write your font into each 200x200 boxes
-    - hide template layer
-    - export a png without background and put under /src folder with chosen file name x
-    - place .png files under ./src folder
-- create .txt file
-    - type in all characters in .png files in sequence to .txt files
-    - use a same name .as png files and place under /src folder
-- for the first time run command "font pipeline"
-    - ./output folder is created, under which
-        -   /json folder contains json files with all unicodes from .txt file
-        - /png folder contains at most n*77 pngs cropped from origin png file and all renamed to unicode correspondingly
-        - /pbm folder contains at most n*77 pbm files grayed from png
-        - /svg folder contains at most n*77 svg files ready to be imported to font file
-    - at root folder .sfd file is created which is the name specified by -name parameter
-    - in ./output folder .ttf is created with the same name which is a font file ready to be used
-- for repeating run
-    - clear /src, replace with new .txt files and .png files
-    - delete /output
-    - se command "font -name <existing name> pipeline", so font edit file will be change accumulately
-    - or you can choose not clear /src folder and generate .ttf with all existing source
 
 ## Special Comment
 - The template is originally chinese orianted which is "米字格". I add later an assistant square for letters and symbols, now it is called "回米字格".
 - By my experience using the template, if the font is created almost exact size of the inner square, generating of .SFD file will scale the font by 1.5 times and move right by 250 pixel. The left and right bearing are set to 50px. Then the size is perfect for using.
 - Multiple source .png and .txt is supported.
-
-## Sample
-- Step 1 create a Procreate project sizing 2200x1400 on iPad. Import ./template/template.png. Add another layer on top to create your font. Note how lowercase/uppercase letters and Chinese characters are placed:
-![png in procreate](./doc/sample.procreate.png ".png in procreate")
-- Step 2 export .png without template and background. Place .png under ./src folder. Create a .txt file containing the same fonts under the ./src too.
-- Step 3 run "font -name sample pipeline". As a result we get a sample.ttf file under ./output folder
-![sample in ide](./doc/sample.ide.png "how to generate font")
-- Step 4 install font file by drag-and-drop to font book
-![font install](./doc/font.install.png "how to install font")
-- Step 5 test by typing.
-![sample result](./doc/sample.result.png "how to test font")

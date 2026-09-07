@@ -270,6 +270,12 @@ svg_import() {
             echo "SetTTFName(0x804, 5, \"$VERSION\")"
             echo "SetTTFName(0x804, 6, \"$postscript_name\")"
             echo "SetTTFName(0x804, 7, \"Private\")"
+            echo "SetOS2Value('WinAscent', 860)"
+            echo "SetOS2Value('WinDescent', 140)"
+            echo "SetOS2Value('TypoAscent', 860)"
+            echo "SetOS2Value('TypoDescent', -140)"
+            echo "SetOS2Value('HHeadAscent', 860)"
+            echo "SetOS2Value('HHeadDescent', -140)"
         } > "$script_file"
     else
         echo "Open(\"$SFD_FILE\")" > "$script_file"
@@ -279,7 +285,7 @@ svg_import() {
         filename=$(basename -- "$file")
         filename_no_ext="${filename%.*}"
         unicode_hex="${filename_no_ext:3}"
-        echo "Select(0x$unicode_hex); Clear(); Import(\"$file\"); Scale(150); Move(250, 0); SetLBearing(50); SetRBearing(50);" >> "$script_file"
+        echo "Select(0x$unicode_hex); Clear(); Import(\"$file\"); Scale(165); SetWidth(1000); CenterInWidth();" >> "$script_file"
         step "Queued $file → U+$unicode_hex"
     done
     echo "Save(\"$SFD_FILE\")" >> "$script_file"
@@ -700,7 +706,7 @@ page = f"""<!DOCTYPE html>
   }}
   body {{
     font-family: '{font_family}', 'Kaiti SC', 'STKaiti', 'KaiTi', serif;
-    font-size: 3rem;
+    font-size: 2rem;
     line-height: 2;
     padding: 2rem;
     background: #fff;

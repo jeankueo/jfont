@@ -22,6 +22,7 @@ ASSIGN_FONT_FALLBACK3_IDX=0
 TYPEFACE_HANDIN_DIR_DEFAULT="./handin"
 TYPEFACE_FONT_DIR_DEFAULT="./font"   # .sfd, .ttf and temp/ subdirectory
 TYPEFACE_FONT_NAME_DEFAULT="myfont"
+PUBLISH_TARGET_DIR_DEFAULT="./html"
 # ═════════════════════════════════════════════════════════════════════════════
 
 TTF_FILE=""
@@ -60,6 +61,7 @@ ${BOLD}USAGE${RESET}
 ${BOLD}WORKFLOW${RESET}
   1. ${CYAN}assignment${RESET}  Generate practice sheets → students write characters
   2. ${CYAN}typeface${RESET}    Scan handwritten PNGs → build TTF font
+  3. ${CYAN}publish${RESET}     Install TTF into the system font directory
 
 ${BOLD}font assignment${RESET} [subcommand] [options]
   ${DIM}(no subcommand)${RESET}       Pipeline: [reset?] → content → png
@@ -87,6 +89,17 @@ ${BOLD}font typeface${RESET} [subcommand] [options]
   ${CYAN}generate${RESET} [options]    .sfd → .ttf
   ${CYAN}cleanup${RESET}               Delete font-dir/temp/
 
+${BOLD}font publish${RESET} <subcommand> [options]
+  ${CYAN}mac${RESET} [options]        Install TTF into ~/Library/Fonts (macOS user font library)
+    ${YELLOW}-font-name <name>${RESET}       Font to publish; default: ${DIM}TYPEFACE_FONT_NAME_DEFAULT=\"$TYPEFACE_FONT_NAME_DEFAULT\"${RESET}
+    ${YELLOW}-font-dir <folder>${RESET}      Folder containing the .ttf; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
+    ${YELLOW}-dest <folder>${RESET}          Destination directory; default: ${DIM}~/Library/Fonts${RESET}
+  ${CYAN}html${RESET} [options]       Generate HTML files from .txt sources, rendered in the built font
+    ${YELLOW}-text <file/folder>${RESET}     Source .txt; default: ${DIM}ASSIGN_FONT_TEXT_DIR_DEFAULT=\"$ASSIGN_FONT_TEXT_DIR_DEFAULT\"${RESET}
+    ${YELLOW}-target <folder>${RESET}        Output folder; default: ${DIM}PUBLISH_TARGET_DIR_DEFAULT=\"$PUBLISH_TARGET_DIR_DEFAULT\"${RESET}
+    ${YELLOW}-font-name <name>${RESET}       Font to embed; default: ${DIM}TYPEFACE_FONT_NAME_DEFAULT=\"$TYPEFACE_FONT_NAME_DEFAULT\"${RESET}
+    ${YELLOW}-font-dir <folder>${RESET}      Folder containing the .ttf; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
+
 ${BOLD}EXAMPLES${RESET}
   ${DIM}font assignment -text han/001.txt${RESET}
   ${DIM}font assignment -text han/${RESET}
@@ -97,6 +110,11 @@ ${BOLD}EXAMPLES${RESET}
   ${DIM}font typeface -font-name myfont -font-dir ./output${RESET}
   ${DIM}font typeface svg-import -font-name myfont${RESET}
   ${DIM}font typeface char-2-uni -handin handin/001.png${RESET}
+  ${DIM}font publish mac -font-name myfont${RESET}
+  ${DIM}font publish mac -font-name myfont -dest ~/Library/Fonts${RESET}
+  ${DIM}font publish html${RESET}
+  ${DIM}font publish html -text han/001.txt -font-name myfont${RESET}
+  ${DIM}font publish html -text han/ -target ./html${RESET}
 "
 }
 
@@ -658,10 +676,121 @@ assignment_run() {
     esac
 }
 
+# ── publish ───────────────────────────────────────────────────────────────────
+_publish_html_one() {
+    local txt_file="$1" out_file="$2" abs_ttf="$3" font_family="$4"
+    mkdir -p "$(dirname "$out_file")"
+    python3 - "$txt_file" "$out_file" "$abs_ttf" "$font_family" <<'PYEOF'
+import sys, html as _html, base64, os
+txt_file, out_file, ttf_path, font_family = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+title = os.path.splitext(os.path.basename(txt_file))[0][4:]
+with open(txt_file, 'r', encoding='utf-8') as f:
+    text = f.read()
+with open(ttf_path, 'rb') as f:
+    font_b64 = base64.b64encode(f.read()).decode('ascii')
+page = f"""<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>{_html.escape(title)}</title>
+<style>
+  @font-face {{
+    font-family: '{font_family}';
+    src: url('data:font/truetype;base64,{font_b64}') format('truetype');
+  }}
+  body {{
+    font-family: '{font_family}', 'Kaiti SC', 'STKaiti', 'KaiTi', serif;
+    font-size: 3rem;
+    line-height: 2;
+    padding: 2rem;
+    background: #fff;
+    color: #222;
+  }}
+  h1 {{ font-family: '{font_family}', 'Kaiti SC', 'STKaiti', 'KaiTi', serif; font-size: 2rem; margin-bottom: 1.5rem; color: #666; font-weight: normal; }}
+  pre {{ font-family: inherit; white-space: pre-wrap; word-break: break-all; margin: 0; }}
+</style>
+</head>
+<body>
+<h1>{_html.escape(title)}</h1>
+<pre>{_html.escape(text)}</pre>
+</body>
+</html>"""
+with open(out_file, 'w', encoding='utf-8') as f:
+    f.write(page)
+print(f"Saved {out_file}")
+PYEOF
+}
+
+publish_run() {
+    local subcommand=""
+    if [[ "${1:-}" != -* ]]; then subcommand="${1:-}"; shift 2>/dev/null || true; fi
+    case "$subcommand" in
+        mac)
+            local font_name_arg="" dest="$HOME/Library/Fonts"
+            while [[ "${1:-}" == -* ]]; do
+                case "$1" in
+                    -font-name) font_name_arg="$2"; shift 2 ;;
+                    -font-dir)  TYPEFACE_FONT_DIR="$2"; shift 2 ;;
+                    -dest)      dest="$2"; shift 2 ;;
+                    *) error "Unknown option: $1"; exit 1 ;;
+                esac
+            done
+            _parse_font_name "${font_name_arg:-$TYPEFACE_FONT_NAME_DEFAULT}"
+            if [ ! -f "$TTF_FILE" ]; then
+                error "TTF not found: $TTF_FILE — run 'font typeface' first."
+                exit 1
+            fi
+            mkdir -p "$dest"
+            cp "$TTF_FILE" "$dest/"
+            info "Installed $(basename "$TTF_FILE") → $dest/"
+            ;;
+        html)
+            local src="$ASSIGN_FONT_TEXT_DIR_DEFAULT"
+            local target="$PUBLISH_TARGET_DIR_DEFAULT"
+            local font_name_arg=""
+            while [[ "${1:-}" == -* ]]; do
+                case "$1" in
+                    -text)      src="$2"; shift 2 ;;
+                    -target)    target="$2"; shift 2 ;;
+                    -font-name) font_name_arg="$2"; shift 2 ;;
+                    -font-dir)  TYPEFACE_FONT_DIR="$2"; shift 2 ;;
+                    *) error "Unknown option: $1"; exit 1 ;;
+                esac
+            done
+            _parse_font_name "${font_name_arg:-$TYPEFACE_FONT_NAME_DEFAULT}"
+            if [ ! -f "$TTF_FILE" ]; then
+                error "TTF not found: $TTF_FILE — run 'font typeface' first."
+                exit 1
+            fi
+            [ ! -f "$src" ] && [ ! -d "$src" ] && { error "Source not found: $src"; exit 1; }
+            local abs_ttf font_family
+            abs_ttf=$(cd "$(dirname "$TTF_FILE")" && pwd)/$(basename "$TTF_FILE")
+            font_family=$(basename "$TTF_FILE" .ttf)
+            mkdir -p "$target"
+            if [ -f "$src" ]; then
+                local base
+                base=$(basename "$src" .txt)
+                _publish_html_one "$src" "$target/$base.html" "$abs_ttf" "$font_family"
+            else
+                while IFS= read -r txt_file; do
+                    local rel out_file
+                    rel="${txt_file#${src%/}/}"
+                    out_file="$target/${rel%.txt}.html"
+                    _publish_html_one "$txt_file" "$out_file" "$abs_ttf" "$font_family"
+                done < <(find "$src" -type f -name "*.txt" | sort)
+            fi
+            info "Done → $target"
+            ;;
+        "") error "publish requires a subcommand (e.g. 'mac', 'html')"; usage; exit 1 ;;
+        *)  error "Unknown publish subcommand: $subcommand"; usage; exit 1 ;;
+    esac
+}
+
 # ── dispatch ──────────────────────────────────────────────────────────────────
 case "${1:-}" in
     typeface)   shift; typeface_run "$@" ;;
     assignment) shift; assignment_run "$@" ;;
+    publish)    shift; publish_run "$@" ;;
     ""|help|-h|--help) usage ;;
     *) error "Unknown command: $1"; usage; exit 1 ;;
 esac

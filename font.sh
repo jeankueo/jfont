@@ -81,13 +81,26 @@ ${BOLD}font typeface${RESET} [subcommand] [options]
     ${YELLOW}-handin <file/folder>${RESET}   Source PNGs; default: ${DIM}TYPEFACE_HANDIN_DIR_DEFAULT=\"$TYPEFACE_HANDIN_DIR_DEFAULT\"${RESET}
     ${YELLOW}-font-name <name>${RESET}       Base name for .sfd and .ttf; default: ${DIM}TYPEFACE_FONT_NAME_DEFAULT=\"$TYPEFACE_FONT_NAME_DEFAULT\"${RESET}
     ${YELLOW}-font-dir <folder>${RESET}      Output for .sfd/.ttf and temp/; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
+    ${YELLOW}-handout <folder>${RESET}       content.json source; default: ${DIM}ASSIGN_FONT_HANDOUT_DIR_DEFAULT=\"$ASSIGN_FONT_HANDOUT_DIR_DEFAULT\"${RESET}
   ${CYAN}char-2-uni${RESET} [options]  .png filename → Unicode JSON
+    ${YELLOW}-handin <file/folder>${RESET}   Source PNGs; default: ${DIM}TYPEFACE_HANDIN_DIR_DEFAULT=\"$TYPEFACE_HANDIN_DIR_DEFAULT\"${RESET}
+    ${YELLOW}-handout <folder>${RESET}       content.json source; default: ${DIM}ASSIGN_FONT_HANDOUT_DIR_DEFAULT=\"$ASSIGN_FONT_HANDOUT_DIR_DEFAULT\"${RESET}
+    ${YELLOW}-font-dir <folder>${RESET}      Output for temp/json/; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
   ${CYAN}png-crop${RESET} [options]    Crop handin PNGs → per-glyph 200×200 PNGs
-  ${CYAN}png-2-pbm${RESET}             PNG → PBM bitmaps
-  ${CYAN}pbm-2-svg${RESET}             PBM → SVG outlines
+    ${YELLOW}-handin <file/folder>${RESET}   Source PNGs; default: ${DIM}TYPEFACE_HANDIN_DIR_DEFAULT=\"$TYPEFACE_HANDIN_DIR_DEFAULT\"${RESET}
+    ${YELLOW}-font-dir <folder>${RESET}      Output for temp/png/; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
+  ${CYAN}png-2-pbm${RESET} [options]   PNG → PBM bitmaps
+    ${YELLOW}-font-dir <folder>${RESET}      Temp directory root; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
+  ${CYAN}pbm-2-svg${RESET} [options]   PBM → SVG outlines
+    ${YELLOW}-font-dir <folder>${RESET}      Temp directory root; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
   ${CYAN}svg-import${RESET} [options]  SVG → FontForge .sfd
+    ${YELLOW}-font-name <name>${RESET}       Target .sfd name; default: ${DIM}TYPEFACE_FONT_NAME_DEFAULT=\"$TYPEFACE_FONT_NAME_DEFAULT\"${RESET}
+    ${YELLOW}-font-dir <folder>${RESET}      Output for .sfd and temp/svg/; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
   ${CYAN}generate${RESET} [options]    .sfd → .ttf
-  ${CYAN}cleanup${RESET}               Delete font-dir/temp/
+    ${YELLOW}-font-name <name>${RESET}       Source .sfd / output .ttf name; default: ${DIM}TYPEFACE_FONT_NAME_DEFAULT=\"$TYPEFACE_FONT_NAME_DEFAULT\"${RESET}
+    ${YELLOW}-font-dir <folder>${RESET}      Folder containing .sfd; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
+  ${CYAN}cleanup${RESET} [options]     Delete font-dir/temp/
+    ${YELLOW}-font-dir <folder>${RESET}      Folder whose temp/ to delete; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
 
 ${BOLD}font publish${RESET} <subcommand> [options]
   ${CYAN}mac${RESET} [options]        Install TTF into ~/Library/Fonts (macOS user font library)
@@ -324,6 +337,7 @@ typeface_run() {
                     error "-handin: not found: $2"; exit 1
                 fi
                 shift 2 ;;
+            -handout) ASSIGN_FONT_HANDOUT_DIR="$2"; shift 2 ;;
             *) error "Unknown option: $1"; exit 1 ;;
         esac
     done

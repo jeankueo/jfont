@@ -4,7 +4,7 @@ FullName: myfont
 FamilyName: myfont
 Weight: Regular
 Copyright: Copyright (c) 2026, Guo
-UComments: "2026-9-7: Created with FontForge (http://fontforge.org)"
+UComments: "2026-9-8: Created with FontForge (http://fontforge.org)"
 Version: 001.000
 ItalicAngle: 0
 UnderlinePosition: -100
@@ -15,29 +15,35 @@ InvalidEm: 0
 LayerCount: 2
 Layer: 0 0 "Back" 1
 Layer: 1 0 "Fore" 0
-XUID: [1021 950 1133605440 14850572]
+XUID: [1021 823 1328533313 5042639]
+StyleMap: 0x0000
+FSType: 0
 OS2Version: 0
 OS2_WeightWidthSlopeOnly: 0
 OS2_UseTypoMetrics: 1
-CreationTime: 1788791997
-ModificationTime: 1788811043
-OS2TypoAscent: 0
+CreationTime: 1788899759
+ModificationTime: 1788899759
+PfmFamily: 16
+TTFWeight: 400
+TTFWidth: 5
+LineGap: 90
+VLineGap: 90
+OS2TypoAscent: 860
 OS2TypoAOffset: 1
-OS2TypoDescent: 0
+OS2TypoDescent: -140
 OS2TypoDOffset: 1
-OS2TypoLinegap: 0
-OS2WinAscent: 0
+OS2TypoLinegap: 90
+OS2WinAscent: 860
 OS2WinAOffset: 1
-OS2WinDescent: 0
+OS2WinDescent: 140
 OS2WinDOffset: 1
-HheadAscent: 0
+HheadAscent: 860
 HheadAOffset: 1
-HheadDescent: 0
+HheadDescent: -140
 HheadDOffset: 1
-OS2Vendor: 'PfEd'
 DEI: 91125
-LangName: 1033 "" "myfont" "Regular" "" "myfont" "1.1.0" "myfont" "Private"
-LangName: 2052 "" "myfont" "+XjiJxAAA" "" "myfont" "1.1.0" "myfont" "Private"
+LangName: 1033 "" "myfont" "Regular" "" "myfont" "1.2.0" "myfont" "Private"
+LangName: 2052 "" "myfont" "+XjiJxAAA" "" "myfont" "1.2.0" "myfont" "Private"
 Encoding: UnicodeFull
 UnicodeInterp: none
 NameList: AGL For New Fonts

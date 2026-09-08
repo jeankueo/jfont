@@ -1,11 +1,13 @@
 #!/bin/bash
 
-VERSION="1.1.0"
+VERSION="1.2.0"
 
 # ══ CONFIGURATION ════════════════════════════════════════════════════════════
 # Assignment practice sheet — directories
 ASSIGN_FONT_TEXT_DIR_DEFAULT="./text"    # source .txt files
 ASSIGN_FONT_HANDOUT_DIR_DEFAULT="./handout" # output: content.json and PNGs
+ASSIGN_DICT_DIR_DEFAULT="../font"             # shared dictionary.json across books
+ASSIGN_BOOK_NAME_DEFAULT="myBook"          # book id written into content.json
 
 # Assignment practice sheet — fonts (path : ttc index)
 # HanziPen SC Regular — header title and example characters; Kaiti SC / PingFang SC as fallbacks
@@ -20,7 +22,7 @@ ASSIGN_FONT_FALLBACK3_IDX=0
 
 # Typeface pipeline — source and output directories
 TYPEFACE_HANDIN_DIR_DEFAULT="./handin"
-TYPEFACE_FONT_DIR_DEFAULT="./font"   # .sfd, .ttf and temp/ subdirectory
+TYPEFACE_FONT_DIR_DEFAULT="../font"   # .sfd, .ttf and temp/ subdirectory
 TYPEFACE_FONT_NAME_DEFAULT="myfont"
 PUBLISH_TARGET_DIR_DEFAULT="./html"
 # ═════════════════════════════════════════════════════════════════════════════
@@ -67,9 +69,13 @@ ${BOLD}font assignment${RESET} [subcommand] [options]
   ${DIM}(no subcommand)${RESET}       Pipeline: [reset?] → content → png
     ${YELLOW}-text <file/folder>${RESET}     .txt source; default: ${DIM}ASSIGN_FONT_TEXT_DIR_DEFAULT=\"$ASSIGN_FONT_TEXT_DIR_DEFAULT\"${RESET}
     ${YELLOW}-handout <folder>${RESET}       Output folder; default: ${DIM}ASSIGN_FONT_HANDOUT_DIR_DEFAULT=\"$ASSIGN_FONT_HANDOUT_DIR_DEFAULT\"${RESET}
+    ${YELLOW}-dict-dir <folder>${RESET}      Shared dictionary folder; default: ${DIM}ASSIGN_DICT_DIR_DEFAULT=\"$ASSIGN_DICT_DIR_DEFAULT\"${RESET}
+    ${YELLOW}-book <id>${RESET}            Book id stored in content.json; default: ${DIM}ASSIGN_BOOK_NAME_DEFAULT=\"$ASSIGN_BOOK_NAME_DEFAULT\"${RESET}
   ${CYAN}content${RESET} [options]     Append lessons to content.json (creates if absent)
     ${YELLOW}-text <file/folder>${RESET}     File: that lesson · Folder: all, alphabetical
     ${YELLOW}-handout <folder>${RESET}       Override output folder
+    ${YELLOW}-dict-dir <folder>${RESET}      Shared dictionary folder; default: ${DIM}ASSIGN_DICT_DIR_DEFAULT=\"$ASSIGN_DICT_DIR_DEFAULT\"${RESET}
+    ${YELLOW}-book <id>${RESET}            Book id stored in content.json; default: ${DIM}ASSIGN_BOOK_NAME_DEFAULT=\"$ASSIGN_BOOK_NAME_DEFAULT\"${RESET}
   ${CYAN}png${RESET} [options]         Generate practice-sheet PNGs into handout folder
     ${YELLOW}-text <file/folder>${RESET}     Filter lessons; omit to generate all
     ${YELLOW}-handout <folder>${RESET}       Override output folder
@@ -115,8 +121,9 @@ ${BOLD}font publish${RESET} <subcommand> [options]
 
 ${BOLD}EXAMPLES${RESET}
   ${DIM}font assignment -text han/001.txt${RESET}
-  ${DIM}font assignment -text han/${RESET}
-  ${DIM}font assignment content -text han/001${RESET}
+  ${DIM}font assignment -text han/ -book gwgz -dict-dir ../shared${RESET}
+  ${DIM}font assignment content -text han/001 -book gwgz${RESET}
+  ${DIM}font assignment content -text han/ -book gwgz -dict-dir ../shared${RESET}
   ${DIM}font assignment png -text 001${RESET}
   ${DIM}font assignment reset -handout han/001.txt${RESET}
   ${DIM}font typeface -font-name myfont${RESET}
@@ -374,30 +381,42 @@ typeface_run() {
 # ── assignment ────────────────────────────────────────────────────────────────
 _assign_add_file() {
     local target_file="$1"
+    local dict_dir="$2"
+    local book_name="$3"
     local content_file="$ASSIGN_FONT_HANDOUT_DIR/content.json"
     local name_no_ext
     name_no_ext=$(basename -- "$target_file")
     name_no_ext="${name_no_ext%.*}"
-    python3 - "$target_file" "$name_no_ext" "$content_file" <<'PYEOF'
-import json, sys
+    python3 - "$target_file" "$name_no_ext" "$content_file" "$dict_dir" "$book_name" <<'PYEOF'
+import json, sys, os
 
-input_file, name_no_ext, content_file = sys.argv[1], sys.argv[2], sys.argv[3]
+input_file, name_no_ext, content_file, dict_dir, book_name = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
 
 with open(input_file, 'r', encoding='utf-8') as f:
     text = f.read()
 with open(content_file, 'r', encoding='utf-8') as f:
     data = json.load(f)
 
-if isinstance(data['dictionary'], dict):
-    data['dictionary'] = ''
+dict_file = os.path.join(dict_dir, 'dictionary.json')
+if os.path.exists(dict_file):
+    with open(dict_file, 'r', encoding='utf-8') as f:
+        dict_data = json.load(f)
+else:
+    os.makedirs(dict_dir, exist_ok=True)
+    dict_data = {"index": "", "assignment": []}
+
+# migrate: remove old dictionary key if present
+data.pop('dictionary', None)
+data['book'] = book_name
 
 key = name_no_ext[:3]
 data.setdefault('names', {})[key] = name_no_ext
 
 for char in text:
-    if char.isspace() or char in data['dictionary']:
+    if char.isspace() or char in dict_data['index']:
         continue
-    data['dictionary'] += char
+    dict_data['index'] += char
+    dict_data['assignment'].append({"book": book_name, "text": key})
     if key not in data['assignment']:
         data['assignment'][key] = ''
     elif isinstance(data['assignment'][key], list):
@@ -406,6 +425,8 @@ for char in text:
 
 with open(content_file, 'w', encoding='utf-8') as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
+with open(dict_file, 'w', encoding='utf-8') as f:
+    json.dump(dict_data, f, ensure_ascii=False, indent=2)
 PYEOF
     info "Processed $target_file"
 }
@@ -478,10 +499,14 @@ assign_reset() {
 
 assign_content() {
     local src="$ASSIGN_FONT_TEXT_DIR_DEFAULT"
+    local dict_dir="$ASSIGN_DICT_DIR_DEFAULT"
+    local book_name="$ASSIGN_BOOK_NAME_DEFAULT"
     while [[ "${1:-}" == -* ]]; do
         case "$1" in
-            -text)    src="$2"; shift 2 ;;
-            -handout) ASSIGN_FONT_HANDOUT_DIR="$2"; shift 2 ;;
+            -text)     src="$2"; shift 2 ;;
+            -handout)  ASSIGN_FONT_HANDOUT_DIR="$2"; shift 2 ;;
+            -dict-dir) dict_dir="$2"; shift 2 ;;
+            -book)     book_name="$2"; shift 2 ;;
             *) error "Unknown option: $1"; exit 1 ;;
         esac
     done
@@ -495,15 +520,15 @@ assign_content() {
     local content_file="$ASSIGN_FONT_HANDOUT_DIR/content.json"
     if [ ! -f "$content_file" ]; then
         mkdir -p "$ASSIGN_FONT_HANDOUT_DIR"
-        printf '{\n  "dictionary": "",\n  "names": {},\n  "assignment": {}\n}\n' > "$content_file"
+        printf '{\n  "book": "%s",\n  "names": {},\n  "assignment": {}\n}\n' "$book_name" > "$content_file"
         info "Created $content_file"
     fi
 
     if [ -f "$src" ]; then
-        _assign_add_file "$src"
+        _assign_add_file "$src" "$dict_dir" "$book_name"
     else
         while IFS= read -r file; do
-            _assign_add_file "$file"
+            _assign_add_file "$file" "$dict_dir" "$book_name"
         done < <(find "$src" -type f -name "*.txt" | sort)
     fi
 }
@@ -670,11 +695,13 @@ assignment_run() {
         content) assign_content "$@" ;;
         png)     assign_png "$@" ;;
         "")
-            local text_arg=""
+            local text_arg="" dict_dir="$ASSIGN_DICT_DIR_DEFAULT" book_name="$ASSIGN_BOOK_NAME_DEFAULT"
             while [[ "${1:-}" == -* ]]; do
                 case "$1" in
-                    -text)    text_arg="$2"; shift 2 ;;
-                    -handout) ASSIGN_FONT_HANDOUT_DIR="$2"; shift 2 ;;
+                    -text)     text_arg="$2"; shift 2 ;;
+                    -handout)  ASSIGN_FONT_HANDOUT_DIR="$2"; shift 2 ;;
+                    -dict-dir) dict_dir="$2"; shift 2 ;;
+                    -book)     book_name="$2"; shift 2 ;;
                     *) error "Unknown option: $1"; exit 1 ;;
                 esac
             done
@@ -689,7 +716,7 @@ assignment_run() {
                     fi
                     ;;
             esac
-            assign_content ${text_arg:+-text "$text_arg"}
+            assign_content ${text_arg:+-text "$text_arg"} -dict-dir "$dict_dir" -book "$book_name"
             assign_png ${text_arg:+-text "$text_arg"}
             ;;
         *) error "Unknown assignment subcommand: $subcommand"; usage; exit 1 ;;

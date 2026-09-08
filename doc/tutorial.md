@@ -4,8 +4,10 @@ During usage, you can change default values by parameters, or before source the 
 There are more parameters to be used. Result can also accumulate.
 
 ## Step 0: Create a Working Folder
+Recommended way to organize your folder is one book a folder
+font folder and dictionary.json which is record which characters have been in which assignment should be shared through books, so they are recommended be place in parent folder.
 ```sh
-mkdir sample
+mkdir sample 
 cd sample
 ```
 
@@ -18,7 +20,7 @@ Note that, for the first 3 chars please DO use number, letters or "_". It is use
 ```sh
 font assignment
 ```
-After this command, a **/handout** folder is created, it contains handout **png** sheets and a **json** file containing information for further processing.
+After this command, a **/handout** folder is created, it contains handout **png** sheets and a **json** file containing information for further processing. By default a dictionary.json file will be created in **../font**.
 ![handout](./02.handout.png)
 
 ## Step 3: Exercise on ipad
@@ -38,7 +40,7 @@ She upload handinsin folder **/handin **
 ```sh
 font typeface
 ```
-As a result, a folder called **/font** is created, it contains font editing file .sfd and final font file .ttf
+As a result, font editing file .sfd and final font file .ttf are created in folder **/font**.
 ![typeface](./05.typeface.png)
 
 ## Step 6: Check Font Edit File
@@ -54,7 +56,7 @@ As a result, the generated font is imported to mac system user library
 
 ## Step 8: Publish Html with Font
 ```sh
-font Publish html
+font publish html
 ```
 As a result, folder **/html** is created, two text are created in html with myfont.
 ![html1](./08.publish.html.1.png)

@@ -305,7 +305,7 @@ svg_import() {
         filename=$(basename -- "$file")
         filename_no_ext="${filename%.*}"
         unicode_hex="${filename_no_ext:3}"
-        echo "Select(0x$unicode_hex); Clear(); Import(\"$file\"); Scale(165); SetWidth(1000); CenterInWidth();" >> "$script_file"
+        echo "Select(0x$unicode_hex); Clear(); Import(\"$file\"); Scale(200); SetWidth(1000); CenterInWidth();" >> "$script_file"
         step "Queued $file → U+$unicode_hex"
     done
     echo "Save(\"$SFD_FILE\")" >> "$script_file"
@@ -412,16 +412,35 @@ data['book'] = book_name
 key = name_no_ext[:3]
 data.setdefault('names', {})[key] = name_no_ext
 
+assignment_map = data.setdefault('assignment', {})
+if isinstance(assignment_map, list):
+    assignment_map = {}
+    data['assignment'] = assignment_map
+if key not in assignment_map:
+    assignment_map[key] = ''
+elif isinstance(assignment_map[key], list):
+    assignment_map[key] = ''.join(assignment_map[key])
+
+seen_chars = set(assignment_map[key])
+char_sources = {}
+for idx, char in enumerate(dict_data.get('index', '')):
+    source = None
+    if idx < len(dict_data.get('assignment', [])):
+        source = dict_data['assignment'][idx]
+    char_sources[char] = source
+
 for char in text:
-    if char.isspace() or char in dict_data['index']:
+    if char.isspace() or char in seen_chars:
         continue
-    dict_data['index'] += char
-    dict_data['assignment'].append({"book": book_name, "text": key})
-    if key not in data['assignment']:
-        data['assignment'][key] = ''
-    elif isinstance(data['assignment'][key], list):
-        data['assignment'][key] = ''.join(data['assignment'][key])
-    data['assignment'][key] += char
+    source = char_sources.get(char)
+    if source is None:
+        dict_data['index'] += char
+        source = {"book": book_name, "text": key}
+        dict_data['assignment'].append(source)
+        char_sources[char] = source
+    if isinstance(source, dict) and source.get('book') == book_name:
+        assignment_map[key] += char
+        seen_chars.add(char)
 
 with open(content_file, 'w', encoding='utf-8') as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
@@ -549,7 +568,7 @@ assign_png() {
         if [ -f "$src" ]; then
             filter_keys=$(_lesson_key_from_path "$src")
         elif [ -d "$src" ]; then
-            filter_keys=$(find "$src" -type f -name "*.txt" | sort | while IFS= read -r f; do _lesson_key_from_path "$f"; done | paste -sd,)
+            filter_keys=$(find "$src" -type f -name "*.txt" | sort | while IFS= read -r f; do _lesson_key_from_path "$f"; done | paste -sd, -)
         else
             error "Source not found: $src"
             exit 1
@@ -709,11 +728,7 @@ assignment_run() {
             read -r do_reset
             case "$do_reset" in
                 [yY][eE][sS]|[yY])
-                    if [ -n "$text_arg" ]; then
-                        assign_reset -handout "$text_arg"
-                    else
-                        assign_reset
-                    fi
+                    assign_reset
                     ;;
             esac
             assign_content ${text_arg:+-text "$text_arg"} -dict-dir "$dict_dir" -book "$book_name"

@@ -24,7 +24,9 @@ ASSIGN_FONT_FALLBACK3_IDX=0
 TYPEFACE_HANDIN_DIR_DEFAULT="./handin"
 TYPEFACE_FONT_DIR_DEFAULT="../font"   # .sfd, .ttf and temp/ subdirectory
 TYPEFACE_FONT_NAME_DEFAULT="myfont"
-PUBLISH_TARGET_DIR_DEFAULT="./html"
+PUBLISH_HTML_DIR_DEFAULT="./html"
+PUBLISH_EPUB_DIR_DEFAULT="./epub"
+PUBLISH_EPUB_NAME_DEFAULT="myEpub"
 # ═════════════════════════════════════════════════════════════════════════════
 
 TTF_FILE=""
@@ -115,9 +117,15 @@ ${BOLD}font publish${RESET} <subcommand> [options]
     ${YELLOW}-dest <folder>${RESET}          Destination directory; default: ${DIM}~/Library/Fonts${RESET}
   ${CYAN}html${RESET} [options]       Generate HTML files from .txt sources, rendered in the built font
     ${YELLOW}-text <file/folder>${RESET}     Source .txt; default: ${DIM}ASSIGN_FONT_TEXT_DIR_DEFAULT=\"$ASSIGN_FONT_TEXT_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-target <folder>${RESET}        Output folder; default: ${DIM}PUBLISH_TARGET_DIR_DEFAULT=\"$PUBLISH_TARGET_DIR_DEFAULT\"${RESET}
+    ${YELLOW}-html-dir <folder>${RESET}      Output folder; default: ${DIM}PUBLISH_HTML_DIR_DEFAULT=\"$PUBLISH_HTML_DIR_DEFAULT\"${RESET}
     ${YELLOW}-font-name <name>${RESET}       Font to embed; default: ${DIM}TYPEFACE_FONT_NAME_DEFAULT=\"$TYPEFACE_FONT_NAME_DEFAULT\"${RESET}
     ${YELLOW}-font-dir <folder>${RESET}      Folder containing the .ttf; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
+  ${CYAN}epub${RESET} [options]       Generate EPUB from .txt sources, rendered in the built font (font embedded once)
+    ${YELLOW}-text <file/folder>${RESET}     Source .txt; default: ${DIM}ASSIGN_FONT_TEXT_DIR_DEFAULT=\"$ASSIGN_FONT_TEXT_DIR_DEFAULT\"${RESET}
+    ${YELLOW}-epub-dir <folder>${RESET}      Output folder; default: ${DIM}PUBLISH_EPUB_DIR_DEFAULT=\"$PUBLISH_EPUB_DIR_DEFAULT\"${RESET}
+    ${YELLOW}-font-name <name>${RESET}       Font to embed; default: ${DIM}TYPEFACE_FONT_NAME_DEFAULT=\"$TYPEFACE_FONT_NAME_DEFAULT\"${RESET}
+    ${YELLOW}-font-dir <folder>${RESET}      Folder containing the .ttf; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
+    ${YELLOW}-epub-name <name>${RESET}       Output epub filename (without .epub); default: ${DIM}PUBLISH_EPUB_NAME_DEFAULT=\"$PUBLISH_EPUB_NAME_DEFAULT\"${RESET}
 
 ${BOLD}EXAMPLES${RESET}
   ${DIM}font assignment -text han/001.txt${RESET}
@@ -134,7 +142,10 @@ ${BOLD}EXAMPLES${RESET}
   ${DIM}font publish mac -font-name myfont -dest ~/Library/Fonts${RESET}
   ${DIM}font publish html${RESET}
   ${DIM}font publish html -text han/001.txt -font-name myfont${RESET}
-  ${DIM}font publish html -text han/ -target ./html${RESET}
+  ${DIM}font publish html -text han/ -html-dir ./html${RESET}
+  ${DIM}font publish epub${RESET}
+  ${DIM}font publish epub -text han/ -epub-name myBook${RESET}
+  ${DIM}font publish epub -text han/ -epub-name myBook -font-name myfont -epub-dir ./out${RESET}
 "
 }
 
@@ -808,12 +819,12 @@ publish_run() {
             ;;
         html)
             local src="$ASSIGN_FONT_TEXT_DIR_DEFAULT"
-            local target="$PUBLISH_TARGET_DIR_DEFAULT"
+            local html_dir="$PUBLISH_HTML_DIR_DEFAULT"
             local font_name_arg=""
             while [[ "${1:-}" == -* ]]; do
                 case "$1" in
                     -text)      src="$2"; shift 2 ;;
-                    -target)    target="$2"; shift 2 ;;
+                    -html-dir)  html_dir="$2"; shift 2 ;;
                     -font-name) font_name_arg="$2"; shift 2 ;;
                     -font-dir)  TYPEFACE_FONT_DIR="$2"; shift 2 ;;
                     *) error "Unknown option: $1"; exit 1 ;;
@@ -828,22 +839,177 @@ publish_run() {
             local abs_ttf font_family
             abs_ttf=$(cd "$(dirname "$TTF_FILE")" && pwd)/$(basename "$TTF_FILE")
             font_family=$(basename "$TTF_FILE" .ttf)
-            mkdir -p "$target"
+            mkdir -p "$html_dir"
             if [ -f "$src" ]; then
                 local base
                 base=$(basename "$src" .txt)
-                _publish_html_one "$src" "$target/$base.html" "$abs_ttf" "$font_family"
+                _publish_html_one "$src" "$html_dir/$base.html" "$abs_ttf" "$font_family"
             else
                 while IFS= read -r txt_file; do
                     local rel out_file
                     rel="${txt_file#${src%/}/}"
-                    out_file="$target/${rel%.txt}.html"
+                    out_file="$html_dir/${rel%.txt}.html"
                     _publish_html_one "$txt_file" "$out_file" "$abs_ttf" "$font_family"
                 done < <(find "$src" -type f -name "*.txt" | sort)
             fi
-            info "Done → $target"
+            info "Done → $html_dir"
             ;;
-        "") error "publish requires a subcommand (e.g. 'mac', 'html')"; usage; exit 1 ;;
+        epub)
+            local src="$ASSIGN_FONT_TEXT_DIR_DEFAULT"
+            local epub_dir="$PUBLISH_EPUB_DIR_DEFAULT"
+            local font_name_arg=""
+            local epub_name="$PUBLISH_EPUB_NAME_DEFAULT"
+            while [[ "${1:-}" == -* ]]; do
+                case "$1" in
+                    -text)      src="$2"; shift 2 ;;
+                    -epub-dir)  epub_dir="$2"; shift 2 ;;
+                    -font-name) font_name_arg="$2"; shift 2 ;;
+                    -font-dir)  TYPEFACE_FONT_DIR="$2"; shift 2 ;;
+                    -epub-name) epub_name="$2"; shift 2 ;;
+                    *) error "Unknown option: $1"; exit 1 ;;
+                esac
+            done
+            _parse_font_name "${font_name_arg:-$TYPEFACE_FONT_NAME_DEFAULT}"
+            if [ ! -f "$TTF_FILE" ]; then
+                error "TTF not found: $TTF_FILE — run 'font typeface' first."
+                exit 1
+            fi
+            [ ! -f "$src" ] && [ ! -d "$src" ] && { error "Source not found: $src"; exit 1; }
+            local abs_ttf font_family
+            abs_ttf=$(cd "$(dirname "$TTF_FILE")" && pwd)/$(basename "$TTF_FILE")
+            font_family=$(basename "$TTF_FILE" .ttf)
+            mkdir -p "$epub_dir"
+            local txt_files=()
+            if [ -f "$src" ]; then
+                txt_files=("$src")
+            else
+                while IFS= read -r f; do txt_files+=("$f"); done < <(find "$src" -type f -name "*.txt" | sort)
+            fi
+            python3 - "$abs_ttf" "$font_family" "$epub_dir/$epub_name.epub" "$epub_name" "${txt_files[@]}" <<'PYEOF'
+import sys, os, html as _html, zipfile, uuid, base64
+from datetime import datetime
+
+ttf_path, font_family, epub_out, book_title_raw = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+txt_files = sys.argv[5:]
+
+book_id = str(uuid.uuid4())
+now = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+
+chapters = []
+for txt_file in txt_files:
+    base = os.path.splitext(os.path.basename(txt_file))[0]
+    with open(txt_file, 'r', encoding='utf-8') as f:
+        text = f.read()
+    chapters.append({'title': base, 'text': text})
+
+with open(ttf_path, 'rb') as f:
+    font_b64 = base64.b64encode(f.read()).decode('ascii')
+
+css = f"""@font-face {{
+  font-family: '{font_family}';
+  src: url('data:font/truetype;base64,{font_b64}') format('truetype');
+}}
+body {{
+  font-family: '{font_family}', 'Kaiti SC', 'STKaiti', 'KaiTi', serif;
+  font-size: 2rem;
+  line-height: 2;
+  padding: 2rem;
+  background: #fff;
+  color: #222;
+}}
+h1 {{ font-family: '{font_family}', 'Kaiti SC', 'STKaiti', 'KaiTi', serif; font-size: 2rem; margin-bottom: 1.5rem; color: #666; font-weight: normal; }}
+pre {{ font-family: inherit; white-space: pre-wrap; word-break: break-all; margin: 0; }}
+nav ol {{ list-style: none; padding: 0; margin: 0; }}
+nav ol li {{ margin: 0.4em 0; }}
+nav ol li a {{ font-family: '{font_family}', 'Kaiti SC', 'STKaiti', 'KaiTi', serif; color: #222; text-decoration: none; }}"""
+
+with zipfile.ZipFile(epub_out, 'w', zipfile.ZIP_DEFLATED) as zf:
+    info = zipfile.ZipInfo('mimetype')
+    info.compress_type = zipfile.ZIP_STORED
+    zf.writestr(info, 'application/epub+zip')
+
+    zf.writestr('META-INF/container.xml', '''<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>''')
+
+    zf.writestr('OEBPS/styles/style.css', css)
+
+    chapter_items = []
+    for i, ch in enumerate(chapters, 1):
+        chid = f'chapter{i:03d}'
+        chfile = f'text/{chid}.xhtml'
+        xhtml = f'''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="zh">
+<head>
+<meta charset="utf-8"/>
+<title>{_html.escape(ch['title'])}</title>
+<link rel="stylesheet" type="text/css" href="../styles/style.css"/>
+</head>
+<body>
+<h1>{_html.escape(ch['title'])}</h1>
+<pre>{_html.escape(ch['text'])}</pre>
+</body>
+</html>'''
+        zf.writestr(f'OEBPS/{chfile}', xhtml)
+        chapter_items.append({'id': chid, 'href': chfile, 'title': ch['title']})
+
+    toc_entries = '\n    '.join(
+        f'<li><a href="{c["href"]}">{_html.escape(c["title"])}</a></li>'
+        for c in chapter_items
+    )
+    zf.writestr('OEBPS/nav.xhtml', f'''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="zh">
+<head><meta charset="utf-8"/><title>目录</title>
+<link rel="stylesheet" type="text/css" href="styles/style.css"/>
+</head>
+<body>
+<h1>目录</h1>
+<nav epub:type="toc">
+<ol>
+    {toc_entries}
+</ol>
+</nav>
+</body>
+</html>''')
+
+    book_title = _html.escape(book_title_raw)
+    manifest_items = '\n    '.join([
+        f'<item id="css" href="styles/style.css" media-type="text/css"/>',
+        f'<item id="nav" href="nav.xhtml"        media-type="application/xhtml+xml" properties="nav"/>',
+    ] + [
+        f'<item id="{c["id"]}" href="{c["href"]}" media-type="application/xhtml+xml"/>'
+        for c in chapter_items
+    ])
+    spine_items = '\n    '.join(f'<itemref idref="{c["id"]}"/>' for c in chapter_items)
+    zf.writestr('OEBPS/content.opf', f'''<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="uid">{book_id}</dc:identifier>
+    <dc:title>{book_title}</dc:title>
+    <dc:language>zh</dc:language>
+    <meta property="dcterms:modified">{now}</meta>
+  </metadata>
+  <manifest>
+    {manifest_items}
+  </manifest>
+  <spine>
+    <itemref idref="nav" linear="yes"/>
+    {spine_items}
+  </spine>
+</package>''')
+
+print(f"Saved {epub_out}")
+PYEOF
+            local py_exit=$?
+            [ $py_exit -ne 0 ] && { error "EPUB generation failed (exit $py_exit)."; exit 1; }
+            info "Done → $epub_dir/$epub_name.epub"
+            ;;
+        "") error "publish requires a subcommand (e.g. 'mac', 'html', 'epub')"; usage; exit 1 ;;
         *)  error "Unknown publish subcommand: $subcommand"; usage; exit 1 ;;
     esac
 }

@@ -63,4 +63,7 @@ As a result, folder **/html** is created, two text are created in html with myfo
 ![html1](./08.publish.html.2.png)
 
 ## Step 9: Publish epub
--- function in plan
+```sh
+ font publish epub 
+```
+![epub](./09.publish.epub.png)

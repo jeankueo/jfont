@@ -197,18 +197,26 @@ char_2_uni() {
         filename=$(basename -- "$png_file")
         key="${filename:0:3}"
         json_out="$TYPEFACE_JSON_DIR/${filename%.*}.json"
-        python3 - "$content_file" "$key" "$json_out" <<'PYEOF'
-import json, sys
+        python3 - "$content_file" "$key" "$json_out" "$filename" <<'PYEOF'
+import json, sys, re
 
 content_file, key, json_out = sys.argv[1], sys.argv[2], sys.argv[3]
+filename = sys.argv[4] if len(sys.argv) > 4 else ''
+
+CHARS_PER_PAGE = 12 * 5  # COLS * ROWS, must match png_crop layout
 
 with open(content_file, 'r', encoding='utf-8') as f:
     data = json.load(f)
 
-chars = data.get('assignment', {}).get(key, '')
-if not chars:
+all_chars = data.get('assignment', {}).get(key, '')
+if not all_chars:
     print(f"Key '{key}' not found in assignment", file=sys.stderr)
     sys.exit(1)
+
+page_match = re.search(r'_p(\d+)\.[^.]+$', filename)
+page_num = int(page_match.group(1)) if page_match else 1
+offset = (page_num - 1) * CHARS_PER_PAGE
+chars = all_chars[offset:offset + CHARS_PER_PAGE]
 
 with open(json_out, 'w', encoding='utf-8') as f:
     json.dump([f"uni{ord(c):04x}" for c in chars], f, ensure_ascii=False)

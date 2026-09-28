@@ -57,101 +57,88 @@ step()  { echo -e "${CYAN}→${RESET}  $*"; }
 # ── usage ─────────────────────────────────────────────────────────────────────
 usage() {
     echo -e "
-${BOLD}font${RESET} v${VERSION}  —  typeface builder & assignment sheet generator
+${BOLD}font${RESET} v${VERSION}  —  typeface builder & practice-sheet generator
 
 ${BOLD}USAGE${RESET}
-  ${CYAN}font${RESET} [-v] <command> [subcommand] [options]
+  font [-v] <command> [subcommand] [options]
 
-${BOLD}WORKFLOW${RESET}
-  1. ${CYAN}assignment${RESET}  Generate practice sheets → students write characters
-  2. ${CYAN}typeface${RESET}    Scan handwritten PNGs → build TTF font
-  3. ${CYAN}publish${RESET}     Install TTF into the system font directory
+${BOLD}COMMANDS${RESET}
+  ${CYAN}assignment${RESET}   Generate practice sheets (content.json + PNGs)
+  ${CYAN}typeface${RESET}     Build TTF font from handwritten PNGs
+  ${CYAN}publish${RESET}      Publish font or generate HTML/EPUB
+  ${CYAN}point${RESET}        Track writing and reading points
 
+──────────────────────────────────────────────────────────────
 ${BOLD}font assignment${RESET} [subcommand] [options]
-  ${DIM}(no subcommand)${RESET}       Pipeline: [reset?] → content → png
-    ${YELLOW}-text <file/folder>${RESET}     .txt source; default: ${DIM}ASSIGN_FONT_TEXT_DIR_DEFAULT=\"$ASSIGN_FONT_TEXT_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-handout <folder>${RESET}       Output folder; default: ${DIM}ASSIGN_FONT_HANDOUT_DIR_DEFAULT=\"$ASSIGN_FONT_HANDOUT_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-dict-dir <folder>${RESET}      Shared dictionary folder; default: ${DIM}ASSIGN_DICT_DIR_DEFAULT=\"$ASSIGN_DICT_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-book <id>${RESET}            Book id stored in content.json; default: ${DIM}ASSIGN_BOOK_NAME_DEFAULT=\"$ASSIGN_BOOK_NAME_DEFAULT\"${RESET}
-  ${CYAN}content${RESET} [options]     Append lessons to content.json (creates if absent)
-    ${YELLOW}-text <file/folder>${RESET}     File: that lesson · Folder: all, alphabetical
-    ${YELLOW}-handout <folder>${RESET}       Override output folder
-    ${YELLOW}-dict-dir <folder>${RESET}      Shared dictionary folder; default: ${DIM}ASSIGN_DICT_DIR_DEFAULT=\"$ASSIGN_DICT_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-book <id>${RESET}            Book id stored in content.json; default: ${DIM}ASSIGN_BOOK_NAME_DEFAULT=\"$ASSIGN_BOOK_NAME_DEFAULT\"${RESET}
-  ${CYAN}png${RESET} [options]         Generate practice-sheet PNGs into handout folder
-    ${YELLOW}-text <file/folder>${RESET}     Filter lessons; omit to generate all
-    ${YELLOW}-handout <folder>${RESET}       Override output folder
-  ${CYAN}reset${RESET} [options]       ${YELLOW}-handout <folder>${RESET}: clear folder · ${YELLOW}-handout <file>${RESET}: delete its PNGs
-                        No -handout: clear the default handout folder
+  ${DIM}(no sub)${RESET}      Pipeline: [reset?] → content → png
+  ${CYAN}content${RESET}      Append lessons to handout/content.json
+  ${CYAN}png${RESET}          Render practice-sheet PNGs
+  ${CYAN}reset${RESET}        Clear handout folder or delete a lesson's PNGs
 
+  ${YELLOW}-text <path>${RESET}      .txt source file or folder    ${DIM}[./text]${RESET}
+  ${YELLOW}-handout <dir>${RESET}    output / content.json folder  ${DIM}[./handout]${RESET}
+  ${YELLOW}-dict-dir <dir>${RESET}   shared dictionary folder      ${DIM}[../font]${RESET}
+  ${YELLOW}-book <id>${RESET}        book id stored in content     ${DIM}[myBook]${RESET}
+
+──────────────────────────────────────────────────────────────
 ${BOLD}font typeface${RESET} [subcommand] [options]
-  ${DIM}(no subcommand)${RESET}       Full pipeline: char-2-uni → png-crop → png-2-pbm → pbm-2-svg → svg-import → generate → cleanup
-    ${YELLOW}-handin <file/folder>${RESET}   Source PNGs; default: ${DIM}TYPEFACE_HANDIN_DIR_DEFAULT=\"$TYPEFACE_HANDIN_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-font-name <name>${RESET}       Base name for .sfd and .ttf; default: ${DIM}TYPEFACE_FONT_NAME_DEFAULT=\"$TYPEFACE_FONT_NAME_DEFAULT\"${RESET}
-    ${YELLOW}-font-dir <folder>${RESET}      Output for .sfd/.ttf and temp/; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-handout <folder>${RESET}       content.json source; default: ${DIM}ASSIGN_FONT_HANDOUT_DIR_DEFAULT=\"$ASSIGN_FONT_HANDOUT_DIR_DEFAULT\"${RESET}
-  ${CYAN}char-2-uni${RESET} [options]  .png filename → Unicode JSON
-    ${YELLOW}-handin <file/folder>${RESET}   Source PNGs; default: ${DIM}TYPEFACE_HANDIN_DIR_DEFAULT=\"$TYPEFACE_HANDIN_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-handout <folder>${RESET}       content.json source; default: ${DIM}ASSIGN_FONT_HANDOUT_DIR_DEFAULT=\"$ASSIGN_FONT_HANDOUT_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-font-dir <folder>${RESET}      Output for temp/json/; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
-  ${CYAN}png-crop${RESET} [options]    Crop handin PNGs → per-glyph 200×200 PNGs
-    ${YELLOW}-handin <file/folder>${RESET}   Source PNGs; default: ${DIM}TYPEFACE_HANDIN_DIR_DEFAULT=\"$TYPEFACE_HANDIN_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-font-dir <folder>${RESET}      Output for temp/png/; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
-  ${CYAN}png-2-pbm${RESET} [options]   PNG → PBM bitmaps
-    ${YELLOW}-font-dir <folder>${RESET}      Temp directory root; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
-  ${CYAN}pbm-2-svg${RESET} [options]   PBM → SVG outlines
-    ${YELLOW}-font-dir <folder>${RESET}      Temp directory root; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
-  ${CYAN}svg-import${RESET} [options]  SVG → FontForge .sfd
-    ${YELLOW}-font-name <name>${RESET}       Target .sfd name; default: ${DIM}TYPEFACE_FONT_NAME_DEFAULT=\"$TYPEFACE_FONT_NAME_DEFAULT\"${RESET}
-    ${YELLOW}-font-dir <folder>${RESET}      Output for .sfd and temp/svg/; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
-  ${CYAN}generate${RESET} [options]    .sfd → .ttf
-    ${YELLOW}-font-name <name>${RESET}       Source .sfd / output .ttf name; default: ${DIM}TYPEFACE_FONT_NAME_DEFAULT=\"$TYPEFACE_FONT_NAME_DEFAULT\"${RESET}
-    ${YELLOW}-font-dir <folder>${RESET}      Folder containing .sfd; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
-  ${CYAN}cleanup${RESET} [options]     Delete font-dir/temp/
-    ${YELLOW}-font-dir <folder>${RESET}      Folder whose temp/ to delete; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
+  ${DIM}(no sub)${RESET}      Full pipeline: char-2-uni → png-crop → png-2-pbm
+                 → pbm-2-svg → svg-import → generate → cleanup
+  ${CYAN}char-2-uni${RESET}   PNG filename → Unicode JSON
+  ${CYAN}png-crop${RESET}     Crop handin PNGs → per-glyph 200×200
+  ${CYAN}png-2-pbm${RESET}    PNG → PBM bitmaps
+  ${CYAN}pbm-2-svg${RESET}    PBM → SVG outlines
+  ${CYAN}svg-import${RESET}   SVG → FontForge .sfd
+  ${CYAN}generate${RESET}     .sfd → .ttf
+  ${CYAN}cleanup${RESET}      Delete temp/
 
+  ${YELLOW}-handin <path>${RESET}    source PNGs (file or folder)  ${DIM}[./handin]${RESET}
+  ${YELLOW}-font-name <n>${RESET}    .sfd / .ttf base name         ${DIM}[myfont]${RESET}
+  ${YELLOW}-font-dir <dir>${RESET}   output for .sfd, .ttf, temp/  ${DIM}[../font]${RESET}
+  ${YELLOW}-handout <dir>${RESET}    content.json source           ${DIM}[./handout]${RESET}
+
+──────────────────────────────────────────────────────────────
 ${BOLD}font publish${RESET} <subcommand> [options]
-  ${CYAN}mac${RESET} [options]        Install TTF into ~/Library/Fonts (macOS user font library)
-    ${YELLOW}-font-name <name>${RESET}       Font to publish; default: ${DIM}TYPEFACE_FONT_NAME_DEFAULT=\"$TYPEFACE_FONT_NAME_DEFAULT\"${RESET}
-    ${YELLOW}-font-dir <folder>${RESET}      Folder containing the .ttf; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-dest <folder>${RESET}          Destination directory; default: ${DIM}~/Library/Fonts${RESET}
-  ${CYAN}html${RESET} [options]       Generate HTML files from .txt sources, rendered in the built font
-    ${YELLOW}-text <file/folder>${RESET}     Source .txt; default: ${DIM}ASSIGN_FONT_TEXT_DIR_DEFAULT=\"$ASSIGN_FONT_TEXT_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-html-dir <folder>${RESET}      Output folder; default: ${DIM}PUBLISH_HTML_DIR_DEFAULT=\"$PUBLISH_HTML_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-font-name <name>${RESET}       Font to embed; default: ${DIM}TYPEFACE_FONT_NAME_DEFAULT=\"$TYPEFACE_FONT_NAME_DEFAULT\"${RESET}
-    ${YELLOW}-font-dir <folder>${RESET}      Folder containing the .ttf; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
-  ${CYAN}epub${RESET} [options]       Generate EPUB from .txt sources, rendered in the built font (font embedded once)
-    ${YELLOW}-text <file/folder>${RESET}     Source .txt; default: ${DIM}ASSIGN_FONT_TEXT_DIR_DEFAULT=\"$ASSIGN_FONT_TEXT_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-epub-dir <folder>${RESET}      Output folder; default: ${DIM}PUBLISH_EPUB_DIR_DEFAULT=\"$PUBLISH_EPUB_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-font-name <name>${RESET}       Font to embed; default: ${DIM}TYPEFACE_FONT_NAME_DEFAULT=\"$TYPEFACE_FONT_NAME_DEFAULT\"${RESET}
-    ${YELLOW}-font-dir <folder>${RESET}      Folder containing the .ttf; default: ${DIM}TYPEFACE_FONT_DIR_DEFAULT=\"$TYPEFACE_FONT_DIR_DEFAULT\"${RESET}
-    ${YELLOW}-epub-name <name>${RESET}       Output epub filename (without .epub); default: ${DIM}PUBLISH_EPUB_NAME_DEFAULT=\"$PUBLISH_EPUB_NAME_DEFAULT\"${RESET}
+  ${CYAN}mac${RESET}          Install TTF → ~/Library/Fonts
+  ${CYAN}html${RESET}         Generate HTML files using the built font
+  ${CYAN}epub${RESET}         Generate EPUB using the built font
 
+  ${YELLOW}-font-name <n>${RESET}    font base name                ${DIM}[myfont]${RESET}
+  ${YELLOW}-font-dir <dir>${RESET}   folder containing .ttf        ${DIM}[../font]${RESET}
+  ${YELLOW}-text <path>${RESET}      .txt source file or folder    ${DIM}[./text]${RESET}
+  ${YELLOW}-html-dir <dir>${RESET}   HTML output folder            ${DIM}[./html]${RESET}
+  ${YELLOW}-epub-dir <dir>${RESET}   EPUB output folder            ${DIM}[./epub]${RESET}
+  ${YELLOW}-epub-name <n>${RESET}    EPUB filename (no .epub)      ${DIM}[myEpub]${RESET}
+  ${YELLOW}-dest <dir>${RESET}       mac install destination       ${DIM}[~/Library/Fonts]${RESET}
+
+──────────────────────────────────────────────────────────────
+${BOLD}font point${RESET} <subcommand> [options]
+  ${CYAN}add-write${RESET}    Scan handin → update point-font, then recalculate
+  ${CYAN}add-read${RESET}     Mark a text as read → update point-read, then recalculate
+  ${CYAN}update${RESET}       Recalculate total and available from stored data
+  ${CYAN}redeem${RESET}       Log a redemption, then recalculate
+
+  ${YELLOW}-handin <dir>${RESET}     handin folder                 ${DIM}[./handin]${RESET}
+  ${YELLOW}-handout <dir>${RESET}    content.json folder           ${DIM}[./handout]${RESET}
+  ${YELLOW}-dict-dir <dir>${RESET}   points.json folder            ${DIM}[../font]${RESET}
+  ${YELLOW}-text <file>${RESET}      text file to mark read        ${DIM}(add-read)${RESET}
+  ${YELLOW}-hour <n>${RESET}         hours redeemed; points=n×36  ${DIM}(redeem)${RESET}
+  ${YELLOW}-halfday${RESET}          half-day; points=60          ${DIM}(redeem)${RESET}
+  ${YELLOW}-point <n>${RESET}        points redeemed directly      ${DIM}(redeem)${RESET}
+
+──────────────────────────────────────────────────────────────
 ${BOLD}EXAMPLES${RESET}
-  ${DIM}font assignment -text han/001.txt${RESET}
-  ${DIM}font assignment -text han/ -book gwgz -dict-dir ../shared${RESET}
-  ${DIM}font assignment content -text han/001 -book gwgz${RESET}
-  ${DIM}font assignment content -text han/ -book gwgz -dict-dir ../shared${RESET}
-  ${DIM}font assignment png -text 001${RESET}
-  ${DIM}font assignment reset -handout han/001.txt${RESET}
-  ${DIM}font typeface -font-name myfont${RESET}
-  ${DIM}font typeface -font-name myfont -font-dir ./output${RESET}
-  ${DIM}font typeface svg-import -font-name myfont${RESET}
-  ${DIM}font typeface char-2-uni -handin handin/001.png${RESET}
-  ${DIM}font publish mac -font-name myfont${RESET}
-  ${DIM}font publish mac -font-name myfont -dest ~/Library/Fonts${RESET}
-  ${DIM}font publish html${RESET}
-  ${DIM}font publish html -text han/001.txt -font-name myfont${RESET}
-  ${DIM}font publish html -text han/ -html-dir ./html${RESET}
-  ${DIM}font publish epub${RESET}
-  ${DIM}font publish epub -text han/ -epub-name myBook${RESET}
-  ${DIM}font publish epub -text han/ -epub-name myBook -font-name myfont -epub-dir ./out${RESET}
+  ${DIM}font assignment -book gwgz${RESET}
+  ${DIM}font typeface -font-name Kexin${RESET}
+  ${DIM}font publish html -font-name Kexin${RESET}
+  ${DIM}font publish epub -font-name Kexin -epub-name 古文观止-可心手抄本${RESET}
+  ${DIM}font point add-write${RESET}
+  ${DIM}font point add-read -text ./text/done/008_曹刿论战.txt${RESET}
+  ${DIM}font point redeem -hour 2${RESET}
 "
 }
 
 # ── helpers ───────────────────────────────────────────────────────────────────
-_require_sfd() { :; }  # kept for compatibility; font-name always has a default now
-
 _parse_font_name() {
     local val="$1"
     mkdir -p "$TYPEFACE_FONT_DIR"
@@ -378,8 +365,8 @@ typeface_run() {
         png-crop)   png_crop ;;
         png-2-pbm)  png_2_pbm ;;
         pbm-2-svg)  pbm_2_svg ;;
-        svg-import) _require_sfd; svg_import ;;
-        generate)   _require_sfd; font_generate ;;
+        svg-import) svg_import ;;
+        generate)   font_generate ;;
         cleanup)
             if [ -d "$TYPEFACE_TEMP_DIR" ]; then
                 rm -rf "$TYPEFACE_TEMP_DIR"
@@ -389,7 +376,6 @@ typeface_run() {
             fi
             ;;
         "")
-            _require_sfd
             char_2_uni; png_crop; png_2_pbm; pbm_2_svg; svg_import; font_generate
             rm -rf "$TYPEFACE_TEMP_DIR" && info "Removed $TYPEFACE_TEMP_DIR"
             ;;
@@ -1022,11 +1008,323 @@ PYEOF
     esac
 }
 
+# ── point-write ───────────────────────────────────────────────────────────────
+point_write_run() {
+    local handin_dir="$TYPEFACE_HANDIN_DIR_DEFAULT"
+    local dict_dir="$ASSIGN_DICT_DIR_DEFAULT"
+    local handout_dir="$ASSIGN_FONT_HANDOUT_DIR_DEFAULT"
+    while [[ "${1:-}" == -* ]]; do
+        case "$1" in
+            -handin)   handin_dir="$2"; shift 2 ;;
+            -dict-dir) dict_dir="$2"; shift 2 ;;
+            -handout)  handout_dir="$2"; shift 2 ;;
+            *) error "Unknown option: $1"; exit 1 ;;
+        esac
+    done
+
+    if [ ! -d "$handin_dir" ]; then
+        error "Handin directory not found: $handin_dir"
+        exit 1
+    fi
+
+    local content_file="$handout_dir/content.json"
+    if [ ! -f "$content_file" ]; then
+        error "content.json not found: $content_file — run 'font assignment content' first."
+        exit 1
+    fi
+
+    local points_file="$dict_dir/points.json"
+
+    local book_name
+    book_name="$(basename "$PWD")"
+    python3 - "$handin_dir" "$content_file" "$points_file" "$book_name" <<'PYEOF'
+import json, sys, os, re
+from datetime import datetime
+
+handin_dir, content_file, points_file, book_name = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+
+CHARS_PER_PAGE = 60
+
+with open(content_file, 'r', encoding='utf-8') as f:
+    content = json.load(f)
+assignment = content.get('assignment', {})
+
+entries = []
+for fname in os.listdir(handin_dir):
+    if not fname.endswith('.png'):
+        continue
+    m = re.match(r'^(\d{3}).*_p(\d+)\.png$', fname)
+    if not m:
+        continue
+    key, page = m.group(1), int(m.group(2))
+    fpath = os.path.join(handin_dir, fname)
+    stat = os.stat(fpath)
+    ctime = getattr(stat, 'st_birthtime', stat.st_mtime)
+    entries.append({'name': fname, 'key': key, 'page': page, 'ctime': ctime})
+
+entries.sort(key=lambda x: x['ctime'])
+
+history = []
+lesson_pages = {}
+
+for e in entries:
+    key, page = e['key'], e['page']
+    chars = assignment.get(key, '')
+    start = (page - 1) * CHARS_PER_PAGE
+    page_points = len(chars[start:start + CHARS_PER_PAGE])
+    lesson_pages.setdefault(key, set()).add(page)
+    history.append({
+        'name': e['name'],
+        'time': datetime.fromtimestamp(e['ctime']).strftime('%Y-%m-%d %H:%M:%S'),
+        'points': page_points,
+    })
+
+for key in sorted(lesson_pages):
+    pages = lesson_pages[key]
+    chars = assignment.get(key, '')
+    print(f"  {key}: {len(pages)} page(s), {sum(len(chars[(p-1)*CHARS_PER_PAGE:p*CHARS_PER_PAGE]) for p in pages)} chars")
+
+if os.path.exists(points_file):
+    with open(points_file, 'r', encoding='utf-8') as f:
+        points = json.load(f)
+else:
+    points = {}
+
+if 'redeem' not in points:
+    points['redeem'] = []
+
+pf = points.get('point-font', {})
+if isinstance(pf, list):
+    from collections import defaultdict
+    migrated = defaultdict(list)
+    for e in pf:
+        migrated[e.get('book', 'unknown')].append(e)
+    pf = dict(migrated)
+pf[book_name] = history
+points['point-font'] = pf
+
+os.makedirs(os.path.dirname(os.path.abspath(points_file)), exist_ok=True)
+with open(points_file, 'w', encoding='utf-8') as f:
+    json.dump(points, f, ensure_ascii=False, indent=2)
+PYEOF
+    local py_exit=$?
+    [ $py_exit -ne 0 ] && { error "Calculation failed (exit $py_exit)."; exit 1; }
+    info "Updated $points_file"
+    point_update_run -dict-dir "$dict_dir"
+}
+
+# ── point-update ──────────────────────────────────────────────────────────────
+point_update_run() {
+    local dict_dir="$ASSIGN_DICT_DIR_DEFAULT"
+    while [[ "${1:-}" == -* ]]; do
+        case "$1" in
+            -dict-dir) dict_dir="$2"; shift 2 ;;
+            *) error "Unknown option: $1"; exit 1 ;;
+        esac
+    done
+
+    local points_file="$dict_dir/points.json"
+    if [ ! -f "$points_file" ]; then
+        error "points.json not found: $points_file — run 'font point add-write' first."
+        exit 1
+    fi
+
+    python3 - "$points_file" <<'PYEOF'
+import json, sys
+
+points_file = sys.argv[1]
+
+with open(points_file, 'r', encoding='utf-8') as f:
+    points = json.load(f)
+
+pf = points.get('point-font', {})
+if isinstance(pf, list):
+    font_total = sum(e.get('points', 0) for e in pf)
+else:
+    font_total = sum(e.get('points', 0) for book_entries in pf.values() for e in book_entries)
+read_total = sum(v.get('points', 0) for book_entries in points.get('point-read', {}).values() for v in book_entries.values())
+total = font_total + read_total
+redeemed = sum(e.get('points', 0) for e in points.get('redeem', []))
+available = total - redeemed
+
+points['total'] = total
+points['available'] = available
+
+with open(points_file, 'w', encoding='utf-8') as f:
+    json.dump(points, f, ensure_ascii=False, indent=2)
+
+print(f"Total: {total} (write: {font_total}, read: {read_total}), redeemed: {redeemed}, available: {available}")
+PYEOF
+    local py_exit=$?
+    [ $py_exit -ne 0 ] && { error "Update failed (exit $py_exit)."; exit 1; }
+    info "Updated $points_file"
+}
+
+# ── point-read ────────────────────────────────────────────────────────────────
+point_read_run() {
+    local src=""
+    local dict_dir="$ASSIGN_DICT_DIR_DEFAULT"
+    while [[ "${1:-}" == -* ]]; do
+        case "$1" in
+            -text)     src="$2"; shift 2 ;;
+            -dict-dir) dict_dir="$2"; shift 2 ;;
+            *) error "Unknown option: $1"; exit 1 ;;
+        esac
+    done
+
+    if [ -z "$src" ]; then
+        error "read requires -text <path>"
+        exit 1
+    fi
+    if [ ! -f "$src" ]; then
+        error "File not found: $src"
+        exit 1
+    fi
+
+    local points_file="$dict_dir/points.json"
+    local book_name
+    book_name="$(basename "$PWD")"
+
+    python3 - "$src" "$points_file" "$book_name" <<'PYEOF'
+import json, sys, os
+
+src, points_file, book_name = sys.argv[1], sys.argv[2], sys.argv[3]
+
+key = os.path.splitext(os.path.basename(src))[0]
+
+with open(src, 'r', encoding='utf-8') as f:
+    text = f.read()
+no_of_char = sum(1 for c in text if not c.isspace())
+
+if os.path.exists(points_file):
+    with open(points_file, 'r', encoding='utf-8') as f:
+        points = json.load(f)
+else:
+    points = {}
+
+pr = points.get('point-read', {})
+if isinstance(pr, dict) and pr:
+    first_val = next(iter(pr.values()))
+    if isinstance(first_val, dict) and 'points' in first_val:
+        pr = {book_name: pr}
+
+book_entries = pr.get(book_name, {})
+if key in book_entries:
+    print(f"already read: {key}", file=sys.stderr)
+    sys.exit(1)
+
+book_entries[key] = {
+    'no-of-char': no_of_char,
+    'points': (no_of_char + 19) // 20,
+}
+pr[book_name] = book_entries
+points['point-read'] = pr
+
+os.makedirs(os.path.dirname(os.path.abspath(points_file)), exist_ok=True)
+with open(points_file, 'w', encoding='utf-8') as f:
+    json.dump(points, f, ensure_ascii=False, indent=2)
+
+print(f"{key}: {no_of_char} chars, {(no_of_char + 19) // 20} points")
+PYEOF
+    local py_exit=$?
+    [ $py_exit -ne 0 ] && { error "fail to add points"; exit 1; }
+    info "Updated $points_file"
+    point_update_run -dict-dir "$dict_dir"
+}
+
+# ── point-redeem ──────────────────────────────────────────────────────────────
+point_redeem_run() {
+    local dict_dir="$ASSIGN_DICT_DIR_DEFAULT"
+    local hour="" point_arg="" message="" halfday=""
+    while [[ "${1:-}" == -* ]]; do
+        case "$1" in
+            -hour)     hour="$2"; shift 2 ;;
+            -point)    point_arg="$2"; shift 2 ;;
+            -halfday)  halfday=1; shift ;;
+            -m)        message="$2"; shift 2 ;;
+            -dict-dir) dict_dir="$2"; shift 2 ;;
+            *) error "Unknown option: $1"; exit 1 ;;
+        esac
+    done
+
+    local _h=0 _p=0 _d=0
+    [ -n "$hour" ]      && _h=1
+    [ -n "$point_arg" ] && _p=1
+    [ -n "$halfday" ]   && _d=1
+    local provided=$(( _h + _p + _d ))
+    if [ "$provided" -eq 0 ]; then
+        error "point redeem requires one of: -halfday, -hour <n>, -point <n>"
+        exit 1
+    fi
+    if [ "$provided" -gt 1 ]; then
+        error "point redeem: only one of -halfday, -hour, -point may be used"
+        exit 1
+    fi
+
+    local points_file="$dict_dir/points.json"
+
+    python3 - "$points_file" "$hour" "$point_arg" "$message" "$halfday" <<'PYEOF'
+import json, sys, os
+from datetime import datetime
+
+points_file, hour_arg, point_arg, message, halfday = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
+
+now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+if halfday:
+    pts = 60
+    record = {'time': now, 'halfday': True, 'points': pts}
+elif hour_arg:
+    hour = float(hour_arg)
+    pts = round(hour * 36)
+    record = {'time': now, 'hour': hour, 'points': pts}
+else:
+    pts = int(point_arg)
+    record = {'time': now, 'points': pts}
+
+if message:
+    record['message'] = message
+
+if os.path.exists(points_file):
+    with open(points_file, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+else:
+    data = {}
+
+data.setdefault('redeem', []).append(record)
+
+os.makedirs(os.path.dirname(os.path.abspath(points_file)), exist_ok=True)
+with open(points_file, 'w', encoding='utf-8') as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+
+print(f"Redeemed: {pts} points")
+PYEOF
+    local py_exit=$?
+    [ $py_exit -ne 0 ] && { error "Redeem failed (exit $py_exit)."; exit 1; }
+    info "Updated $points_file"
+    point_update_run -dict-dir "$dict_dir"
+}
+
+# ── point dispatcher ──────────────────────────────────────────────────────────
+point_run() {
+    local subcommand=""
+    if [[ "${1:-}" != -* ]]; then subcommand="${1:-}"; shift 2>/dev/null || true; fi
+    case "$subcommand" in
+        add-write) point_write_run "$@" ;;
+        add-read)  point_read_run "$@" ;;
+        update)    point_update_run "$@" ;;
+        redeem)    point_redeem_run "$@" ;;
+        "")        error "point requires a subcommand (add-write, add-read, update, redeem)"; usage; exit 1 ;;
+        *)         error "Unknown point subcommand: $subcommand"; usage; exit 1 ;;
+    esac
+}
+
 # ── dispatch ──────────────────────────────────────────────────────────────────
 case "${1:-}" in
     typeface)   shift; typeface_run "$@" ;;
     assignment) shift; assignment_run "$@" ;;
     publish)    shift; publish_run "$@" ;;
+    point)      shift; point_run "$@" ;;
     ""|help|-h|--help) usage ;;
     *) error "Unknown command: $1"; usage; exit 1 ;;
 esac

@@ -1022,10 +1022,18 @@ point_write_run() {
         esac
     done
 
-    if [ ! -d "$handin_dir" ]; then
-        error "Handin directory not found: $handin_dir"
+    if [ ! -f "$handin_dir" ] && [ ! -d "$handin_dir" ]; then
+        error "Handin path not found: $handin_dir"
         exit 1
     fi
+
+    echo -e "${YELLOW}This will replace all write points for ${BOLD}$(basename "$PWD")${RESET}${YELLOW}.${RESET}"
+    echo -en "${BOLD}Confirm? [y/N] ${RESET}"
+    read -r reply
+    case "$reply" in
+        [yY][eE][sS]|[yY]) ;;
+        *) echo "Aborted."; exit 0 ;;
+    esac
 
     local content_file="$handout_dir/content.json"
     if [ ! -f "$content_file" ]; then
@@ -1049,15 +1057,19 @@ with open(content_file, 'r', encoding='utf-8') as f:
     content = json.load(f)
 assignment = content.get('assignment', {})
 
+if os.path.isfile(handin_dir):
+    png_files = [(os.path.basename(handin_dir), os.path.abspath(handin_dir))]
+else:
+    png_files = [(f, os.path.join(handin_dir, f)) for f in os.listdir(handin_dir)]
+
 entries = []
-for fname in os.listdir(handin_dir):
+for fname, fpath in png_files:
     if not fname.endswith('.png'):
         continue
     m = re.match(r'^(\d{3}).*_p(\d+)\.png$', fname)
     if not m:
         continue
     key, page = m.group(1), int(m.group(2))
-    fpath = os.path.join(handin_dir, fname)
     stat = os.stat(fpath)
     ctime = getattr(stat, 'st_birthtime', stat.st_mtime)
     entries.append({'name': fname, 'key': key, 'page': page, 'ctime': ctime})
@@ -1187,10 +1199,9 @@ point_read_run() {
 
     python3 - "$src" "$points_file" "$book_name" <<'PYEOF'
 import json, sys, os
+from datetime import datetime
 
 src, points_file, book_name = sys.argv[1], sys.argv[2], sys.argv[3]
-
-key = os.path.splitext(os.path.basename(src))[0]
 
 with open(src, 'r', encoding='utf-8') as f:
     text = f.read()
@@ -1208,12 +1219,19 @@ if isinstance(pr, dict) and pr:
     if isinstance(first_val, dict) and 'points' in first_val:
         pr = {book_name: pr}
 
+key = os.path.splitext(os.path.basename(src))[0][:3]
+
 book_entries = pr.get(book_name, {})
 if key in book_entries:
-    print(f"already read: {key}", file=sys.stderr)
+    print(f"error: {key} already recorded — will not overwrite", file=sys.stderr)
     sys.exit(1)
 
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(points_file)))
+text_rel = os.path.relpath(os.path.abspath(src), root_dir)
+
 book_entries[key] = {
+    'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    'text': text_rel,
     'no-of-char': no_of_char,
     'points': (no_of_char + 19) // 20,
 }

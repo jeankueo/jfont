@@ -1,5 +1,6 @@
 # Prerequisite
 - **perl**, **jq** (usually preinstalled in mac already)
+- shellscript only tested in mac
 ```sh
 # install and check
 perl --version

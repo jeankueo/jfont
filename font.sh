@@ -1219,7 +1219,7 @@ if isinstance(pr, dict) and pr:
     if isinstance(first_val, dict) and 'points' in first_val:
         pr = {book_name: pr}
 
-key = os.path.splitext(os.path.basename(src))[0][:3]
+key = os.path.splitext(os.path.basename(src))[0]
 
 book_entries = pr.get(book_name, {})
 if key in book_entries:
